@@ -172,6 +172,7 @@ func main() {
 			case "/s", "/start_sprint":
 				ActionStartSprint(bot, update, appState, chatId)
 			case "/reset":
+				CleanUserSettings(appState, chatId)
 				ReplyWith(bot, update, "Your data has been cleaned.")
 			case "/info":
 				ReplyWith(bot, update, "I am a pomodoro bot written in Go.")
