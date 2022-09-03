@@ -9,7 +9,7 @@ func ActionStartSprint(
 	bot *tgbotapi.BotAPI,
 	update tgbotapi.Update,
 	appState *AppState,
-	userId UserID,
+	userId ChatID,
 ) {
 	session := GetUserSessionRunning(appState, userId)
 
@@ -22,7 +22,7 @@ func ActionStartSprint(
 		userId,
 		session,
 		// Rest begin handler
-		func(id UserID, session *Session) {
+		func(id ChatID, session *Session) {
 			text := fmt.Sprintf(
 				"Pomodoro done! Have rest for %s now.",
 				NiceTimeFormatting(session.RestDurationSet),
@@ -31,7 +31,7 @@ func ActionStartSprint(
 			ReplyWith(bot, update, text)
 		},
 		// Rest finish handler
-		func(id UserID, session *Session) {
+		func(id ChatID, session *Session) {
 			text := fmt.Sprintf(
 				"Pomodoro %s started.",
 				NiceTimeFormatting(session.RestDurationSet),
@@ -39,7 +39,7 @@ func ActionStartSprint(
 			ReplyWith(bot, update, text)
 		},
 		// End sessionDefault handler
-		func(id UserID, session *Session, endKind PomodoroEndKind) {
+		func(id ChatID, session *Session, endKind PomodoroEndKind) {
 			switch endKind {
 			case PomodoroFinished:
 				ReplyWith(bot, update, "Pomodoro done! The session is complete, congratulations!")
@@ -48,7 +48,7 @@ func ActionStartSprint(
 			}
 		},
 		// Pause sessionDefault handler
-		func(id UserID, session *Session) {
+		func(id ChatID, session *Session) {
 			ReplyWith(bot, update, "Your session has paused.")
 		},
 	)

@@ -13,12 +13,12 @@ const (
 )
 
 func StartSession(
-	userId UserID,
+	userId ChatID,
 	currentSession *Session,
-	restBeginHandler func(id UserID, session *Session),
-	restFinishedHandler func(id UserID, session *Session),
-	endSessionHandler func(id UserID, session *Session, endKind PomodoroEndKind),
-	pauseSessionHandler func(id UserID, session *Session),
+	restBeginHandler func(id ChatID, session *Session),
+	restFinishedHandler func(id ChatID, session *Session),
+	endSessionHandler func(id ChatID, session *Session, endKind PomodoroEndKind),
+	pauseSessionHandler func(id ChatID, session *Session),
 ) error {
 	if currentSession.isZero() {
 		return errors.New("the session is effectively nil")
@@ -54,12 +54,12 @@ func StartSession(
 }
 
 func SpawnSessionTimer(
-	userId UserID,
+	userId ChatID,
 	currentSession *Session,
-	restBeginHandler func(id UserID, session *Session),
-	restFinishedHandler func(id UserID, session *Session),
-	endSessionHandler func(id UserID, session *Session, endKind PomodoroEndKind),
-	pauseSessionHandler func(id UserID, session *Session),
+	restBeginHandler func(id ChatID, session *Session),
+	restFinishedHandler func(id ChatID, session *Session),
+	endSessionHandler func(id ChatID, session *Session, endKind PomodoroEndKind),
+	pauseSessionHandler func(id ChatID, session *Session),
 ) {
 	go func() {
 		for {
@@ -122,12 +122,12 @@ func CancelSession(currentSession *Session) error {
 }
 
 func ResumeSession(
-	userId UserID,
+	userId ChatID,
 	currentSession *Session,
-	restBeginHandler func(id UserID, session *Session),
-	restFinishedHandler func(id UserID, session *Session),
-	endSessionHandler func(id UserID, session *Session, endKind PomodoroEndKind),
-	pauseSessionHandler func(id UserID, session *Session),
+	restBeginHandler func(id ChatID, session *Session),
+	restFinishedHandler func(id ChatID, session *Session),
+	endSessionHandler func(id ChatID, session *Session, endKind PomodoroEndKind),
+	pauseSessionHandler func(id ChatID, session *Session),
 ) error {
 	if currentSession.isZero() {
 		return errors.New("the session is effectively nil")

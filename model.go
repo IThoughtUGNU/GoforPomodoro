@@ -4,9 +4,10 @@ import "fmt"
 
 type AppSettings struct {
 	ApiToken string
+	BotName  string
 }
 
-type UserID int64
+type ChatID int64
 
 type Session struct {
 	SprintDurationSet   int
@@ -68,13 +69,20 @@ func (s *Session) isCanceled() bool {
 func (s *Session) State() string {
 	var stateStr string
 	if s.isPaused {
-		stateStr = "PAUSED"
+		if s.PomodoroDuration == s.PomodoroDurationSet &&
+			s.SprintDuration == s.SprintDurationSet &&
+			s.RestDuration == s.RestDurationSet {
+
+			stateStr = "Pending"
+		} else {
+			stateStr = "Paused"
+		}
 	} else if s.isCancel {
-		stateStr = "CANCELED"
+		stateStr = "Canceled"
 	} else if s.isStopped() {
-		stateStr = "STOPPED"
+		stateStr = "Stopped"
 	} else {
-		stateStr = "RUNNING"
+		stateStr = "Running"
 	}
 	return stateStr
 }
@@ -82,8 +90,9 @@ func (s *Session) State() string {
 type Settings struct {
 	sessionDefault Session
 	sessionRunning *Session
+	autorun        bool
 }
 
 type AppState struct {
-	usersSettings map[UserID]*Settings
+	usersSettings map[ChatID]*Settings
 }

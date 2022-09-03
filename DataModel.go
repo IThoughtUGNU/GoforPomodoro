@@ -3,28 +3,42 @@ package main
 func LoadAppState() (*AppState, error) {
 	// temporary
 	appState := new(AppState)
-	appState.usersSettings = make(map[UserID]*Settings)
+	appState.usersSettings = make(map[ChatID]*Settings)
 	return appState, nil
 }
 
-func defaultUserSettingsIfNeeded(appState *AppState, userId UserID) {
+func defaultUserSettingsIfNeeded(appState *AppState, userId ChatID) {
 	if appState.usersSettings[userId] == nil {
 		appState.usersSettings[userId] = new(Settings)
+		appState.usersSettings[userId].autorun = true
 	}
 }
 
-func CleanUserSettings(appState *AppState, userId UserID) {
-	appState.usersSettings[userId] = new(Settings)
+func CleanUserSettings(appState *AppState, userId ChatID) {
+	appState.usersSettings[userId] = nil // new(Settings)
+	defaultUserSettingsIfNeeded(appState, userId)
 }
 
-func UpdateUserSession(appState *AppState, userId UserID, session Session) {
+func SetUserAutorun(appState *AppState, chatId ChatID, autorun bool) {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	appState.usersSettings[chatId].autorun = autorun
+}
+
+func GetUserAutorun(appState *AppState, chatId ChatID) bool {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	return appState.usersSettings[chatId].autorun
+}
+
+func UpdateUserSession(appState *AppState, userId ChatID, session Session) {
 	defaultUserSettingsIfNeeded(appState, userId)
 
 	settings := appState.usersSettings[userId]
 	settings.sessionDefault = session
 }
 
-func GetUserSessionFromSettings(appState *AppState, userId UserID) *Session {
+func GetUserSessionFromSettings(appState *AppState, userId ChatID) *Session {
 	defaultUserSettingsIfNeeded(appState, userId)
 
 	session := &appState.usersSettings[userId].sessionDefault
@@ -32,7 +46,7 @@ func GetUserSessionFromSettings(appState *AppState, userId UserID) *Session {
 	return session
 }
 
-func GetNewUserSessionRunning(appState *AppState, userId UserID) *Session {
+func GetNewUserSessionRunning(appState *AppState, userId ChatID) *Session {
 	defaultUserSettingsIfNeeded(appState, userId)
 
 	appState.usersSettings[userId].sessionRunning = new(Session)
@@ -52,7 +66,7 @@ func GetNewUserSessionRunning(appState *AppState, userId UserID) *Session {
 	return sessionRunning
 }
 
-func GetUserSessionRunning(appState *AppState, userId UserID) *Session {
+func GetUserSessionRunning(appState *AppState, userId ChatID) *Session {
 	defaultUserSettingsIfNeeded(appState, userId)
 
 	var sessionRunning *Session

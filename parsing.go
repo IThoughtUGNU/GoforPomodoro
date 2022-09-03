@@ -3,6 +3,7 @@ package main
 import (
 	"regexp"
 	"strconv"
+	"strings"
 )
 
 const BasicPattern = `\/([1-9]\d*)(for([1-9]\d*)(rest([1-9]\d*))?)?` // `\/([1-9]\d*)`
@@ -12,6 +13,25 @@ const (
 	CardinalityGroup = 3
 	RestGroup        = 5
 )
+
+func commandFrom(appSettings *AppSettings, text string) string {
+	command := strings.Split(text, " ")[0]
+
+	botName := appSettings.BotName
+	if !strings.HasPrefix(botName, "@") {
+		botName = "@" + botName
+	}
+
+	if strings.HasSuffix(command, botName) {
+		command = strings.Split(command, "@")[0]
+	}
+
+	return command
+}
+
+func parametersFrom(text string) []string {
+	return strings.Split(text, " ")[1:]
+}
 
 func ParsePatternToSession(r *regexp.Regexp, text string) *Session {
 	if r == nil {

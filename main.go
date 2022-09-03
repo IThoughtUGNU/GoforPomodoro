@@ -5,6 +5,7 @@ import (
 	"github.com/BurntSushi/toml"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
+	"strings"
 )
 
 func loadAppSettings() (*AppSettings, error) {
@@ -35,7 +36,6 @@ func main() {
 
 	fmt.Println("Hello from Go for Pomodoro!")
 
-	fmt.Printf("%s\n\n", settings.ApiToken)
 	bot, err := tgbotapi.NewBotAPI(settings.ApiToken)
 	if err != nil {
 		log.Panic(err)
@@ -53,7 +53,7 @@ func main() {
 	for update := range updates {
 		if update.Message != nil { // If we got a message
 
-			userId := UserID(update.Message.From.ID)
+			chatId := ChatID(update.Message.Chat.ID)
 
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
@@ -62,23 +62,41 @@ func main() {
 			var replyMsg tgbotapi.MessageConfig
 			var replyMsgText string
 
-			switch msgText {
+			command := commandFrom(settings, msgText)
+			parameters := parametersFrom(msgText)
+			log.Printf("command: %s\n", command)
+
+			switch command {
+			case "/autorun":
+				if len(parameters) > 0 {
+					param := parameters[0]
+					var autorun bool
+					if param == "on" {
+						autorun = true
+					} else if param == "off" {
+						autorun = false
+					} else {
+						ReplyWith(bot, update, "Command error.")
+						continue
+					}
+					SetUserAutorun(appState, chatId, autorun)
+					ReplyWith(bot, update, "Autorun set "+strings.ToUpper(param)+".")
+				} else {
+					SetUserAutorun(appState, chatId, true)
+					ReplyWith(bot, update, "Autorun set ON.")
+				}
 			case "/se", "/session":
-				session := GetUserSessionRunning(appState, userId)
+				session := GetUserSessionRunning(appState, chatId)
 				var stateStr = session.State()
 
 				if session.isCancel {
 					replyMsgText = fmt.Sprintf("Your session state: %s.", stateStr)
 				} else {
 					replyMsgText = session.String()
-					/*replyMsgText = fmt.Sprintf(
-					"Your session state: %s,\n"+
-						"pomodoro time left: %s", stateStr, NiceTimeFormatting(session.PomodoroDuration))*/
 				}
 				ReplyWith(bot, update, replyMsgText)
-				continue
 			case "/p", "/pause":
-				session := GetUserSessionRunning(appState, userId)
+				session := GetUserSessionRunning(appState, chatId)
 				err := PauseSession(session)
 				if err != nil {
 					if !session.isStopped() {
@@ -88,10 +106,8 @@ func main() {
 					}
 					continue
 				}
-				// ReplyWith(bot, update, "Session paused!")
-				continue
 			case "/c", "/cancel":
-				session := GetUserSessionRunning(appState, userId)
+				session := GetUserSessionRunning(appState, chatId)
 				err := CancelSession(session)
 				if err != nil {
 					if session.isStopped() {
@@ -102,12 +118,12 @@ func main() {
 					continue
 				}
 			case "/resume":
-				session := GetUserSessionRunning(appState, userId)
+				session := GetUserSessionRunning(appState, chatId)
 				err := ResumeSession(
-					userId,
+					chatId,
 					session,
 					// Rest begin handler
-					func(id UserID, session *Session) {
+					func(id ChatID, session *Session) {
 						text := fmt.Sprintf(
 							"Pomodoro done! Have rest for %s now.",
 							NiceTimeFormatting(session.RestDurationSet),
@@ -116,7 +132,7 @@ func main() {
 						ReplyWith(bot, update, text)
 					},
 					// Rest finish handler
-					func(id UserID, session *Session) {
+					func(id ChatID, session *Session) {
 						text := fmt.Sprintf(
 							"Pomodoro %s started.",
 							NiceTimeFormatting(session.RestDurationSet),
@@ -124,7 +140,7 @@ func main() {
 						ReplyWith(bot, update, text)
 					},
 					// End sessionDefault handler
-					func(id UserID, session *Session, endKind PomodoroEndKind) {
+					func(id ChatID, session *Session, endKind PomodoroEndKind) {
 						switch endKind {
 						case PomodoroFinished:
 							ReplyWith(bot, update, "Pomodoro done! The session is complete, congratulations!")
@@ -133,7 +149,7 @@ func main() {
 						}
 					},
 					// Pause sessionDefault handler
-					func(id UserID, session *Session) {
+					func(id ChatID, session *Session) {
 						ReplyWith(bot, update, "Your session has paused.")
 					},
 				)
@@ -150,31 +166,32 @@ func main() {
 					continue
 				}
 				ReplyWith(bot, update, "Session resumed!")
-				continue
 			case "/d", "/default":
-				UpdateUserSession(appState, userId, DefaultSession())
-				ActionStartSprint(bot, update, appState, userId)
+				UpdateUserSession(appState, chatId, DefaultSession())
+				ActionStartSprint(bot, update, appState, chatId)
 			case "/s", "/start_sprint":
-				ActionStartSprint(bot, update, appState, userId)
-				continue
+				ActionStartSprint(bot, update, appState, chatId)
 			case "/reset":
-
 				ReplyWith(bot, update, "Your data has been cleaned.")
 			case "/info":
 				ReplyWith(bot, update, "I am a pomodoro bot written in Go.")
-				continue
 			default:
 				newSession := ParsePatternToSession(nil, msgText)
 
 				if newSession != nil {
 					replyMsgText = fmt.Sprintf("New session!\n\n%s", newSession.String())
 
-					UpdateUserSession(appState, UserID(userId), *newSession)
+					UpdateUserSession(appState, chatId, *newSession)
 					replyMsg = tgbotapi.NewMessage(update.Message.Chat.ID, replyMsgText)
 
 					_, err := bot.Send(replyMsg)
 					if err != nil {
 						log.Printf("ERROR: %s", err.Error())
+					}
+
+					autorun := GetUserAutorun(appState, chatId)
+					if autorun {
+						ActionStartSprint(bot, update, appState, chatId)
 					}
 				} else {
 					// replyMsg.ReplyToMessageID = update.Message.MessageID
