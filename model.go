@@ -55,6 +55,17 @@ func (s *Session) String() string {
 		fmt.Sprintf("\n\nCurrent session state: %s", s.State())
 }
 
+func (s *Session) LeftTimeMessage() string {
+	if s.isZero() {
+		return "No running pomodoros!"
+	}
+	if s.isRest {
+		return "Rest for other " + NiceTimeFormatting(s.RestDuration)
+	} else {
+		return "Task time: " + NiceTimeFormatting(s.PomodoroDuration) + " left."
+	}
+}
+
 func (s *Session) isStopped() bool {
 	if s.PomodoroDuration <= 0 || s.SprintDuration < 0 || s.isPaused || s.isCancel {
 		return true

@@ -15,13 +15,19 @@ func loadAppSettings() (*AppSettings, error) {
 	return settings, err
 }
 
-func ReplyWith(bot *tgbotapi.BotAPI, update tgbotapi.Update, text string) {
-	msg := tgbotapi.NewMessage(update.Message.Chat.ID, text)
-	_, err := bot.Send(msg)
-	if err != nil {
-		log.Printf("ERROR: %s", err.Error())
-	}
-}
+/*
+var numericKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonURL("1.com", "http://1.com"),
+		tgbotapi.NewInlineKeyboardButtonData("2", "2"),
+		tgbotapi.NewInlineKeyboardButtonData("3", "3"),
+	),
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("4", "4"),
+		tgbotapi.NewInlineKeyboardButtonData("5", "5"),
+		tgbotapi.NewInlineKeyboardButtonData("6", "6"),
+	),
+)*/
 
 func main() {
 	settings, err := loadAppSettings()
@@ -118,54 +124,7 @@ func main() {
 					continue
 				}
 			case "/resume":
-				session := GetUserSessionRunning(appState, chatId)
-				err := ResumeSession(
-					chatId,
-					session,
-					// Rest begin handler
-					func(id ChatID, session *Session) {
-						text := fmt.Sprintf(
-							"Pomodoro done! Have rest for %s now.",
-							NiceTimeFormatting(session.RestDurationSet),
-						)
-
-						ReplyWith(bot, update, text)
-					},
-					// Rest finish handler
-					func(id ChatID, session *Session) {
-						text := fmt.Sprintf(
-							"Pomodoro %s started.",
-							NiceTimeFormatting(session.RestDurationSet),
-						)
-						ReplyWith(bot, update, text)
-					},
-					// End sessionDefault handler
-					func(id ChatID, session *Session, endKind PomodoroEndKind) {
-						switch endKind {
-						case PomodoroFinished:
-							ReplyWith(bot, update, "Pomodoro done! The session is complete, congratulations!")
-						case PomodoroCanceled:
-							ReplyWith(bot, update, "Session canceled.")
-						}
-					},
-					// Pause sessionDefault handler
-					func(id ChatID, session *Session) {
-						ReplyWith(bot, update, "Your session has paused.")
-					},
-				)
-				if err != nil {
-					if session.isZero() {
-						ReplyWith(bot, update, "Session was not set.")
-					} else if session.isCancel {
-						ReplyWith(bot, update, "Last session was canceled.")
-					} else if !session.isStopped() {
-						ReplyWith(bot, update, "Session is already running.")
-					} else {
-						ReplyWith(bot, update, "Server error.")
-					}
-					continue
-				}
-				ReplyWith(bot, update, "Session resumed!")
+				ActionResumeSprint(bot, update, appState, chatId)
 			case "/d", "/default":
 				UpdateUserSession(appState, chatId, DefaultSession())
 				ActionStartSprint(bot, update, appState, chatId)
@@ -174,6 +133,18 @@ func main() {
 			case "/reset":
 				CleanUserSettings(appState, chatId)
 				ReplyWith(bot, update, "Your data has been cleaned.")
+			case "/help":
+				ReplyWith(bot, update, "E.g.\n/25for4rest5 --> 4 🍅, 25 minutes + 5m for rest.\n"+
+					"The latter is also achieved with /default.\n"+
+					"/30for4 --> 4 🍅, 30 minutes (default: +5m for rest).\n"+
+					"/25 --> 1 🍅, 25 minutes (single pomodoro sprint)\n\n"+
+					"(/s) /start_sprint to start (if /autorun is set off)\n"+
+					"(/p) /pause to pause a session in run\n"+
+					"(/c) /cancel to cancel a session\n"+
+					"/resume to resume a paused session.\n"+
+					"(/se) /session to check your session settings and status.\n"+
+					"/reset to reset your profile/chat settings.\n"+
+					"/info to have some info on this bot.")
 			case "/info":
 				ReplyWith(bot, update, "I am a pomodoro bot written in Go.")
 			default:
@@ -195,11 +166,44 @@ func main() {
 						ActionStartSprint(bot, update, appState, chatId)
 					}
 				} else {
+					/*
+						switch update.Message.Text {
+						case "open":
+							replyMsgText = "Keyboard test"
+							replyMsg = tgbotapi.NewMessage(update.Message.Chat.ID, replyMsgText)
+
+							replyMsg.ReplyMarkup = simpleHourglassKeyboard
+							_, err := bot.Send(replyMsg)
+							if err != nil {
+								log.Printf("ERROR: %s", err.Error())
+							}
+						}*/
+
 					// replyMsg.ReplyToMessageID = update.Message.MessageID
 
 					// replyMsgText = "Can't manage this command right now."
 				}
 			}
+		} else if update.CallbackQuery != nil {
+			// Respond to the callback query, telling Telegram to show the user
+			// a message with the data received.
+
+			switch update.CallbackQuery.Data {
+			case "⌛":
+				chatId := ChatID(update.CallbackQuery.Message.Chat.ID)
+				session := GetUserSessionRunning(appState, chatId)
+				toastText := session.LeftTimeMessage()
+				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, toastText)
+				if _, err := bot.Request(callback); err != nil {
+					panic(err)
+				}
+			}
+			/*
+				// And finally, send a message containing the data received.
+				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data)
+				if _, err := bot.Send(msg); err != nil {
+					panic(err)
+				}*/
 		}
 	}
 }

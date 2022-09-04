@@ -62,6 +62,10 @@ func ParsePatternToSession(r *regexp.Regexp, text string) *Session {
 		if err == nil {
 			session.SprintDurationSet = sprintDuration
 			session.SprintDuration = session.SprintDurationSet
+
+			// Default 5 minutes of rest duration in case user did not specify.
+			session.RestDurationSet = 5 * 60
+			session.RestDuration = session.RestDurationSet
 		}
 
 		restDuration, err := strconv.Atoi(v[RestGroup])
