@@ -1,5 +1,7 @@
 package main
 
+import "log"
+
 func LoadAppState() (*AppState, error) {
 	// temporary
 	appState := new(AppState)
@@ -7,53 +9,111 @@ func LoadAppState() (*AppState, error) {
 	return appState, nil
 }
 
-func defaultUserSettingsIfNeeded(appState *AppState, userId ChatID) {
-	if appState.usersSettings[userId] == nil {
-		appState.usersSettings[userId] = new(Settings)
-		appState.usersSettings[userId].autorun = true
+func defaultUserSettingsIfNeeded(appState *AppState, chatId ChatID) {
+	if appState.usersSettings[chatId] == nil {
+		chatSettings := new(Settings)
+		chatSettings.autorun = true
+		appState.usersSettings[chatId] = chatSettings
 	}
 }
 
-func CleanUserSettings(appState *AppState, userId ChatID) {
-	appState.usersSettings[userId] = nil // new(Settings)
-	defaultUserSettingsIfNeeded(appState, userId)
+func AdjustChatType(appState *AppState, chatId ChatID, senderId ChatID, isGroup bool) {
+	defaultUserSettingsIfNeeded(appState, chatId)
+	appState.usersSettings[chatId].isGroup = isGroup
 }
 
-func SetUserAutorun(appState *AppState, chatId ChatID, autorun bool) {
+func IsGroup(appState *AppState, chatId ChatID) bool {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	return appState.usersSettings[chatId].isGroup
+}
+
+func GetSubscribers(appState *AppState, chatId ChatID) []ChatID {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	return appState.usersSettings[chatId].subscribers
+}
+
+func SubscribeUserInGroup(appState *AppState, chatId ChatID, senderId ChatID) error {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	if chatId == senderId {
+		return SubscriptionError{}
+	}
+
+	settings := appState.usersSettings[chatId]
+	subscribers := (*settings).subscribers
+	if !Contains(subscribers, senderId) {
+		(*settings).subscribers = append(subscribers, senderId)
+	} else {
+		return AlreadySubscribed{}
+	}
+	return nil
+}
+
+func UnsubscribeUser(appState *AppState, chatId ChatID, senderId ChatID) error {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	if chatId == senderId {
+		return SubscriptionError{}
+	}
+
+	settings := appState.usersSettings[chatId]
+	subscribers := (*settings).subscribers
+	if Contains(subscribers, senderId) {
+		newS, err := AfterRemoveEl(subscribers, senderId)
+		if err != nil {
+			log.Printf("[UnsubscribeUser] Error while removing %d\n", senderId)
+			return OperationError{}
+		}
+		(*settings).subscribers = newS
+	} else {
+		log.Printf("[UnsubscribeUser] %d was not subscribed.", senderId)
+		return AlreadyUnsubscribed{}
+	}
+	return nil
+}
+
+func CleanUserSettings(appState *AppState, chatId ChatID, senderId ChatID) {
+	appState.usersSettings[chatId] = nil // new(Settings)
+	defaultUserSettingsIfNeeded(appState, chatId)
+}
+
+func SetUserAutorun(appState *AppState, chatId ChatID, senderId ChatID, autorun bool) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	appState.usersSettings[chatId].autorun = autorun
 }
 
-func GetUserAutorun(appState *AppState, chatId ChatID) bool {
+func GetUserAutorun(appState *AppState, chatId ChatID, senderId ChatID) bool {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	return appState.usersSettings[chatId].autorun
 }
 
-func UpdateUserSession(appState *AppState, userId ChatID, session Session) {
-	defaultUserSettingsIfNeeded(appState, userId)
+func UpdateUserSession(appState *AppState, chatId ChatID, senderId ChatID, session Session) {
+	defaultUserSettingsIfNeeded(appState, chatId)
 
-	settings := appState.usersSettings[userId]
+	settings := appState.usersSettings[chatId]
 	settings.sessionDefault = session
 }
 
-func GetUserSessionFromSettings(appState *AppState, userId ChatID) *Session {
-	defaultUserSettingsIfNeeded(appState, userId)
+func GetUserSessionFromSettings(appState *AppState, chatId ChatID, senderId ChatID) *Session {
+	defaultUserSettingsIfNeeded(appState, chatId)
 
-	session := &appState.usersSettings[userId].sessionDefault
+	session := &appState.usersSettings[chatId].sessionDefault
 	session.isPaused = true
 	return session
 }
 
-func GetNewUserSessionRunning(appState *AppState, userId ChatID) *Session {
-	defaultUserSettingsIfNeeded(appState, userId)
+func GetNewUserSessionRunning(appState *AppState, chatId ChatID, senderId ChatID) *Session {
+	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.usersSettings[userId].sessionRunning = new(Session)
+	appState.usersSettings[chatId].sessionRunning = new(Session)
 
-	sessionDef := GetUserSessionFromSettings(appState, userId)
+	sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
-	sessionRunning := appState.usersSettings[userId].sessionRunning
+	sessionRunning := appState.usersSettings[chatId].sessionRunning
 	sessionRunning.PomodoroDurationSet = sessionDef.PomodoroDurationSet
 	sessionRunning.SprintDurationSet = sessionDef.SprintDurationSet
 	sessionRunning.RestDurationSet = sessionDef.RestDurationSet
@@ -66,17 +126,17 @@ func GetNewUserSessionRunning(appState *AppState, userId ChatID) *Session {
 	return sessionRunning
 }
 
-func GetUserSessionRunning(appState *AppState, userId ChatID) *Session {
-	defaultUserSettingsIfNeeded(appState, userId)
+func GetUserSessionRunning(appState *AppState, chatId ChatID, senderId ChatID) *Session {
+	defaultUserSettingsIfNeeded(appState, chatId)
 
 	var sessionRunning *Session
 
-	if appState.usersSettings[userId].sessionRunning == nil {
-		appState.usersSettings[userId].sessionRunning = new(Session)
+	if appState.usersSettings[chatId].sessionRunning == nil {
+		appState.usersSettings[chatId].sessionRunning = new(Session)
 
-		sessionDef := GetUserSessionFromSettings(appState, userId)
+		sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
-		sessionRunning = appState.usersSettings[userId].sessionRunning
+		sessionRunning = appState.usersSettings[chatId].sessionRunning
 
 		sessionRunning.PomodoroDurationSet = sessionDef.PomodoroDurationSet
 		sessionRunning.SprintDurationSet = sessionDef.SprintDurationSet
@@ -88,7 +148,7 @@ func GetUserSessionRunning(appState *AppState, userId ChatID) *Session {
 
 		sessionRunning.isPaused = true
 	} else {
-		sessionRunning = appState.usersSettings[userId].sessionRunning
+		sessionRunning = appState.usersSettings[chatId].sessionRunning
 	}
 
 	return sessionRunning

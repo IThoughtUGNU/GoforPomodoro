@@ -102,6 +102,8 @@ type Settings struct {
 	sessionDefault Session
 	sessionRunning *Session
 	autorun        bool
+	isGroup        bool
+	subscribers    []ChatID
 }
 
 type AppState struct {

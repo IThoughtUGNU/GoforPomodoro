@@ -59,20 +59,52 @@ func main() {
 	for update := range updates {
 		if update.Message != nil { // If we got a message
 
+			senderId := ChatID(update.Message.From.ID)
 			chatId := ChatID(update.Message.Chat.ID)
 
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
 			msgText := update.Message.Text
 
-			var replyMsg tgbotapi.MessageConfig
-			var replyMsgText string
+			// var replyMsg tgbotapi.MessageConfig
+			// var replyMsgText string
 
 			command := commandFrom(settings, msgText)
 			parameters := parametersFrom(msgText)
 			log.Printf("command: %s\n", command)
 
+			isGroup := update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup()
+			AdjustChatType(appState, chatId, senderId, isGroup)
+
+			communicator := GetCommunicator(appState, chatId, bot)
 			switch command {
+			// Group commands
+			case "/join":
+				if !isGroup {
+					communicator.ReplyWith("This command works only in groups, sorry.")
+					continue
+				}
+				senderChat, err := bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: int64(senderId)}})
+				if err != nil {
+					communicator.ReplyWith("Error with your account.")
+					continue
+				}
+
+				// ReplyWith(bot, update, "Your username: @"+senderChat.UserName)
+
+				communicator.Subscribe(
+					SubscribeUserInGroup(appState, chatId, senderId),
+					update,
+					senderChat.UserName,
+				)
+			case "/leave":
+				if !isGroup {
+					communicator.OnlyGroupsCommand()
+					continue
+				}
+
+				communicator.Unsubscribe(UnsubscribeUser(appState, chatId, senderId))
+			// Personal commands
 			case "/autorun":
 				if len(parameters) > 0 {
 					param := parameters[0]
@@ -82,106 +114,51 @@ func main() {
 					} else if param == "off" {
 						autorun = false
 					} else {
-						ReplyWith(bot, update, "Command error.")
+						communicator.CommandError()
 						continue
 					}
-					SetUserAutorun(appState, chatId, autorun)
+					SetUserAutorun(appState, chatId, senderId, autorun)
 					ReplyWith(bot, update, "Autorun set "+strings.ToUpper(param)+".")
 				} else {
-					SetUserAutorun(appState, chatId, true)
+					SetUserAutorun(appState, chatId, senderId, true)
 					ReplyWith(bot, update, "Autorun set ON.")
 				}
 			case "/se", "/session":
-				session := GetUserSessionRunning(appState, chatId)
-				var stateStr = session.State()
-
-				if session.isCancel {
-					replyMsgText = fmt.Sprintf("Your session state: %s.", stateStr)
-				} else {
-					replyMsgText = session.String()
-				}
-				ReplyWith(bot, update, replyMsgText)
+				session := GetUserSessionRunning(appState, chatId, senderId)
+				communicator.SessionState(*session)
 			case "/p", "/pause":
-				session := GetUserSessionRunning(appState, chatId)
+				session := GetUserSessionRunning(appState, chatId, senderId)
 				err := PauseSession(session)
-				if err != nil {
-					if !session.isStopped() {
-						ReplyWith(bot, update, "Session was not running.")
-					} else {
-						ReplyWith(bot, update, "Server error.")
-					}
-					continue
-				}
+				communicator.SessionPaused(err, *session)
 			case "/c", "/cancel":
-				session := GetUserSessionRunning(appState, chatId)
+				session := GetUserSessionRunning(appState, chatId, senderId)
 				err := CancelSession(session)
-				if err != nil {
-					if session.isStopped() {
-						ReplyWith(bot, update, "Session was not running.")
-					} else {
-						ReplyWith(bot, update, "Server error.")
-					}
-					continue
-				}
+				communicator.SessionCanceled(err, *session)
 			case "/resume":
-				ActionResumeSprint(bot, update, appState, chatId)
+				ActionResumeSprint(update, appState, communicator)
 			case "/d", "/default":
-				UpdateUserSession(appState, chatId, DefaultSession())
-				ActionStartSprint(bot, update, appState, chatId)
+				UpdateUserSession(appState, chatId, senderId, DefaultSession())
+				ActionStartSprint(update, appState, communicator)
 			case "/s", "/start_sprint":
-				ActionStartSprint(bot, update, appState, chatId)
+				ActionStartSprint(update, appState, communicator)
 			case "/reset":
-				CleanUserSettings(appState, chatId)
-				ReplyWith(bot, update, "Your data has been cleaned.")
+				CleanUserSettings(appState, chatId, senderId)
+				communicator.DataCleaned()
 			case "/help":
-				ReplyWith(bot, update, "E.g.\n/25for4rest5 --> 4 🍅, 25 minutes + 5m for rest.\n"+
-					"The latter is also achieved with /default.\n"+
-					"/30for4 --> 4 🍅, 30 minutes (default: +5m for rest).\n"+
-					"/25 --> 1 🍅, 25 minutes (single pomodoro sprint)\n\n"+
-					"(/s) /start_sprint to start (if /autorun is set off)\n"+
-					"(/p) /pause to pause a session in run\n"+
-					"(/c) /cancel to cancel a session\n"+
-					"/resume to resume a paused session.\n"+
-					"(/se) /session to check your session settings and status.\n"+
-					"/reset to reset your profile/chat settings.\n"+
-					"/info to have some info on this bot.")
+				communicator.Help()
 			case "/info":
-				ReplyWith(bot, update, "I am a pomodoro bot written in Go.")
+				communicator.Info()
 			default:
 				newSession := ParsePatternToSession(nil, msgText)
 
 				if newSession != nil {
-					replyMsgText = fmt.Sprintf("New session!\n\n%s", newSession.String())
+					UpdateUserSession(appState, chatId, senderId, *newSession)
+					communicator.NewSession(*newSession)
 
-					UpdateUserSession(appState, chatId, *newSession)
-					replyMsg = tgbotapi.NewMessage(update.Message.Chat.ID, replyMsgText)
-
-					_, err := bot.Send(replyMsg)
-					if err != nil {
-						log.Printf("ERROR: %s", err.Error())
-					}
-
-					autorun := GetUserAutorun(appState, chatId)
+					autorun := GetUserAutorun(appState, chatId, senderId)
 					if autorun {
-						ActionStartSprint(bot, update, appState, chatId)
+						ActionStartSprint(update, appState, communicator)
 					}
-				} else {
-					/*
-						switch update.Message.Text {
-						case "open":
-							replyMsgText = "Keyboard test"
-							replyMsg = tgbotapi.NewMessage(update.Message.Chat.ID, replyMsgText)
-
-							replyMsg.ReplyMarkup = simpleHourglassKeyboard
-							_, err := bot.Send(replyMsg)
-							if err != nil {
-								log.Printf("ERROR: %s", err.Error())
-							}
-						}*/
-
-					// replyMsg.ReplyToMessageID = update.Message.MessageID
-
-					// replyMsgText = "Can't manage this command right now."
 				}
 			}
 		} else if update.CallbackQuery != nil {
@@ -191,7 +168,9 @@ func main() {
 			switch update.CallbackQuery.Data {
 			case "⌛":
 				chatId := ChatID(update.CallbackQuery.Message.Chat.ID)
-				session := GetUserSessionRunning(appState, chatId)
+				senderId := ChatID(update.CallbackQuery.Message.From.ID)
+
+				session := GetUserSessionRunning(appState, chatId, senderId)
 				toastText := session.LeftTimeMessage()
 				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, toastText)
 				if _, err := bot.Request(callback); err != nil {
