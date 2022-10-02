@@ -42,6 +42,21 @@ func StartSession(
 		nextRunSession := func() {
 			gocron.NewScheduler().
 		}*/
+
+	// next (first) sprint will end in time now + pomodoro dur. sec.s
+	// e.g. now + 30 minutes.
+	endNextSprintTs := time.Now().Local().Add(
+		time.Second * time.Duration(currentSession.PomodoroDurationSet),
+	)
+	currentSession.EndNextSprintTimestamp = endNextSprintTs
+
+	// e.g. now + 30 minutes + 5 min. rest
+	endNextRestTs := time.Now().Local().Add(
+		time.Second*time.Duration(currentSession.PomodoroDurationSet) +
+			time.Second*time.Duration(currentSession.RestDurationSet),
+	)
+	currentSession.EndNextRestTimestamp = endNextRestTs
+
 	SpawnSessionTimer(
 		userId,
 		currentSession,
@@ -92,6 +107,7 @@ func SpawnSessionTimer(
 					currentSession.SprintDuration -= 1
 
 					if currentSession.SprintDuration < 0 {
+						currentSession.isFinished = true
 						endSessionHandler(userId, currentSession, PomodoroFinished)
 						return
 					}

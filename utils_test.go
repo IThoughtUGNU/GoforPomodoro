@@ -31,3 +31,30 @@ func TestAfterRemoveEl(t *testing.T) {
 		t.Fatalf("s3/s4 not equal to empty slice")
 	}
 }
+
+func TestNiceTimeFormatting(t *testing.T) {
+	{
+		ok := NiceTimeFormatting(10) == "10 seconds"
+		if !ok {
+			t.Fatalf("NiceTimeFormatting(10) != \"10 seconds\" ")
+		}
+	}
+
+	{
+		lhs := "2 minutes"
+		rhs := NiceTimeFormatting(100)
+		ok := lhs == rhs
+		if !ok {
+			t.Fatalf("error second check. Should be %s, instead it is %s", lhs, rhs)
+		}
+	}
+
+	{
+		lhs := "1 hour 55 minutes"
+		rhs := NiceTimeFormatting(115 * 60)
+		ok := lhs == rhs
+		if !ok {
+			t.Fatalf("error third check. Should be %s, instead it is %s", lhs, rhs)
+		}
+	}
+}

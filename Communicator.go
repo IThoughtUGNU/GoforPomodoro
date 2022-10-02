@@ -113,9 +113,15 @@ func (c *Communicator) ReplyWithAndHourglassAndNotify(text string) {
 	c.ReplyWithAndHourglass(c.toNotify(text))
 }
 
-func (c *Communicator) SessionStarted(err error) {
+func (c *Communicator) SessionStarted(session *Session, err error) {
 	if err == nil {
-		c.ReplyWithAndHourglassAndNotify("Session started!")
+		numberOfSprints := session.SprintDurationSet
+		sessionTime := session.PomodoroDurationSet * numberOfSprints
+		if numberOfSprints > 1 {
+			sessionTime += session.RestDurationSet * (numberOfSprints - 1)
+		}
+		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", NiceTimeFormatting(sessionTime))
+		c.ReplyWithAndHourglassAndNotify(replyStr)
 	} else {
 		c.ReplyWith("Session was not set.\nPlease set a session or use /default for classic 4x25m+25m.")
 	}

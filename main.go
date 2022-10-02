@@ -174,7 +174,8 @@ func main() {
 				toastText := session.LeftTimeMessage()
 				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, toastText)
 				if _, err := bot.Request(callback); err != nil {
-					panic(err)
+					// panic(err)
+					log.Println("[ERROR] " + err.Error())
 				}
 			}
 			/*

@@ -35,6 +35,7 @@ func ActionStartSprint(update tgbotapi.Update, appState *AppState, communicator 
 	session = GetNewUserSessionRunning(appState, chatId, senderId)
 
 	communicator.SessionStarted(
+		session,
 		StartSession(
 			chatId,
 			session,

@@ -7,10 +7,28 @@ import (
 )
 
 func NiceTimeFormatting(seconds int) string {
-	if seconds > 60 {
+	if seconds > 60*60 {
+		// >1 hour
+		minutes := int(math.Ceil(float64(seconds) / 60.0))
+		hours := int(math.Floor(float64(minutes) / 60.0))
+
+		minutes = minutes % 60
+
+		var hoursTxt string
+		if hours == 1 {
+			hoursTxt = "hour"
+		} else {
+			hoursTxt = "hours"
+		}
+
+		return fmt.Sprintf("%d %s %d minutes", hours, hoursTxt, minutes)
+	} else if seconds > 60 {
+		// >1 minute
+
 		minutes := int(math.Ceil(float64(seconds) / 60.0))
 		return fmt.Sprintf("%d minutes", minutes)
 	} else {
+		// <=1 minute
 		return fmt.Sprintf("%d seconds", seconds)
 	}
 }
