@@ -80,7 +80,7 @@ type Session struct {
 
 func (s *Session) GetRestDuration() int {
 
-	if s.EndNextRestTimestamp == nil {
+	if s.EndNextRestTimestamp == nil || s.IsPaused() {
 		log.Println("Fallback to s.RestDuration")
 		return s.Data.RestDuration
 	}
@@ -95,7 +95,7 @@ func (s *Session) GetRestDurationSet() int {
 }
 
 func (s *Session) GetPomodoroDuration() int {
-	if s.EndNextSprintTimestamp == nil {
+	if s.EndNextSprintTimestamp == nil || s.IsPaused() {
 		log.Println("Fallback to s.PomodoroDuration")
 		return s.Data.PomodoroDuration
 	}
