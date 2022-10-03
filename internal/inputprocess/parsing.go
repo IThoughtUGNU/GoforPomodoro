@@ -1,6 +1,7 @@
-package main
+package inputprocess
 
 import (
+	"GoforPomodoro/internal/domain"
 	"regexp"
 	"strconv"
 	"strings"
@@ -14,7 +15,7 @@ const (
 	RestGroup        = 5
 )
 
-func commandFrom(appSettings *AppSettings, text string) string {
+func CommandFrom(appSettings *domain.AppSettings, text string) string {
 	command := strings.Split(text, " ")[0]
 
 	botName := appSettings.BotName
@@ -29,24 +30,24 @@ func commandFrom(appSettings *AppSettings, text string) string {
 	return command
 }
 
-func parametersFrom(text string) []string {
+func ParametersFrom(text string) []string {
 	return strings.Split(text, " ")[1:]
 }
 
-func ParsePatternToSession(r *regexp.Regexp, text string) *Session {
+func ParsePatternToSession(r *regexp.Regexp, text string) *domain.Session {
 	if r == nil {
 		r = regexp.MustCompile(BasicPattern)
 	}
 	matches := r.FindAllStringSubmatch(text, -1)
 
-	var session *Session
+	var session *domain.Session
 
 	for _, v := range matches {
 		if session == nil {
-			session = new(Session).Init()
+			session = new(domain.Session).Init()
 			session.SprintDurationSet = 1
 			session.Data.SprintDuration = 1
-			session.Data.isPaused = true
+			session.Data.IsPaused = true
 		}
 
 		// Mandatory parameter for this command.

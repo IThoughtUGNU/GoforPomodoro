@@ -1,4 +1,4 @@
-package main
+package utils
 
 import (
 	"errors"
@@ -81,6 +81,6 @@ func AfterRemoveEl[T comparable](s []T, el T) ([]T, error) {
 	return AfterRemove(s, index), nil
 }
 
-func timePtr(t time.Time) *time.Time {
+func TimePtr(t time.Time) *time.Time {
 	return &t
 }

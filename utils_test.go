@@ -1,6 +1,7 @@
 package main
 
 import (
+	"GoforPomodoro/internal/utils"
 	"testing"
 )
 
@@ -8,7 +9,7 @@ func TestAfterRemoveEl(t *testing.T) {
 	var st_ = [...]string{"ciao", "mondo"}
 	var st []string = st_[:]
 
-	s1, err := AfterRemoveEl(st, "ciao")
+	s1, err := utils.AfterRemoveEl(st, "ciao")
 	if err != nil {
 		t.Fatalf("Should have not returned error.")
 	}
@@ -16,7 +17,7 @@ func TestAfterRemoveEl(t *testing.T) {
 		t.Fatalf("Didn't delete element!")
 	}
 
-	s2, err := AfterRemoveEl(st, "mondo")
+	s2, err := utils.AfterRemoveEl(st, "mondo")
 	if err != nil {
 		t.Fatalf("Should have not returned error.")
 	}
@@ -24,8 +25,8 @@ func TestAfterRemoveEl(t *testing.T) {
 		t.Fatalf("Didn't delete element!")
 	}
 
-	s3, err := AfterRemoveEl(s1, "mondo")
-	s4, err := AfterRemoveEl(s2, "ciao")
+	s3, err := utils.AfterRemoveEl(s1, "mondo")
+	s4, err := utils.AfterRemoveEl(s2, "ciao")
 
 	if len(s3) > 0 || len(s4) > 0 {
 		t.Fatalf("s3/s4 not equal to empty slice")
@@ -34,7 +35,7 @@ func TestAfterRemoveEl(t *testing.T) {
 
 func TestNiceTimeFormatting(t *testing.T) {
 	{
-		ok := NiceTimeFormatting(10) == "10 seconds"
+		ok := utils.NiceTimeFormatting(10) == "10 seconds"
 		if !ok {
 			t.Fatalf("NiceTimeFormatting(10) != \"10 seconds\" ")
 		}
@@ -42,7 +43,7 @@ func TestNiceTimeFormatting(t *testing.T) {
 
 	{
 		lhs := "2 minutes"
-		rhs := NiceTimeFormatting(100)
+		rhs := utils.NiceTimeFormatting(100)
 		ok := lhs == rhs
 		if !ok {
 			t.Fatalf("error second check. Should be %s, instead it is %s", lhs, rhs)
@@ -51,7 +52,7 @@ func TestNiceTimeFormatting(t *testing.T) {
 
 	{
 		lhs := "1 hour 55 minutes"
-		rhs := NiceTimeFormatting(115 * 60)
+		rhs := utils.NiceTimeFormatting(115 * 60)
 		ok := lhs == rhs
 		if !ok {
 			t.Fatalf("error third check. Should be %s, instead it is %s", lhs, rhs)

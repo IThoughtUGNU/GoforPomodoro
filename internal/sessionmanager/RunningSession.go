@@ -1,6 +1,7 @@
-package main
+package sessionmanager
 
 import (
+	"GoforPomodoro/internal/domain"
 	"errors"
 	"log"
 	"time"
@@ -14,14 +15,14 @@ const (
 )
 
 func StartSession(
-	userId ChatID,
-	currentSession *Session,
-	restBeginHandler func(id ChatID, session *Session),
-	restFinishedHandler func(id ChatID, session *Session),
-	endSessionHandler func(id ChatID, session *Session, endKind PomodoroEndKind),
-	pauseSessionHandler func(id ChatID, session *Session),
+	userId domain.ChatID,
+	currentSession *domain.Session,
+	restBeginHandler func(id domain.ChatID, session *domain.Session),
+	restFinishedHandler func(id domain.ChatID, session *domain.Session),
+	endSessionHandler func(id domain.ChatID, session *domain.Session, endKind PomodoroEndKind),
+	pauseSessionHandler func(id domain.ChatID, session *domain.Session),
 ) error {
-	if currentSession.isZero() {
+	if currentSession.IsZero() {
 		return errors.New("the session is effectively nil")
 	}
 
@@ -35,8 +36,8 @@ func StartSession(
 	// 2. set a timer of PomodoroDuration minutes
 	// 3. at its end, set a timer of PomodoroDuration seconds
 	// 4. at its end, check if Sprint duration is >0. If so, go to 1, otherwise isPaused.
-	currentSession.Data.isPaused = false
-	currentSession.Data.isCancel = false
+	currentSession.Data.IsPaused = false
+	currentSession.Data.IsCancel = false
 
 	currentSession.Data.SprintDuration -= 1
 
@@ -54,12 +55,12 @@ func StartSession(
 }
 
 func SpawnSessionTimer(
-	userId ChatID,
-	currentSession *Session,
-	restBeginHandler func(id ChatID, session *Session),
-	restFinishedHandler func(id ChatID, session *Session),
-	endSessionHandler func(id ChatID, session *Session, endKind PomodoroEndKind),
-	pauseSessionHandler func(id ChatID, session *Session),
+	userId domain.ChatID,
+	currentSession *domain.Session,
+	restBeginHandler func(id domain.ChatID, session *domain.Session),
+	restFinishedHandler func(id domain.ChatID, session *domain.Session),
+	endSessionHandler func(id domain.ChatID, session *domain.Session, endKind PomodoroEndKind),
+	pauseSessionHandler func(id domain.ChatID, session *domain.Session),
 ) {
 	sData := &currentSession.Data
 mainLoop:
@@ -69,13 +70,13 @@ mainLoop:
 			if ok {
 				if action.Paused || action.Canceled || action.Finished {
 					if action.Paused {
-						sData.isPaused = true
+						sData.IsPaused = true
 						pauseSessionHandler(userId, currentSession)
 					} else if action.Canceled {
-						sData.isCancel = true
+						sData.IsCancel = true
 						endSessionHandler(userId, currentSession, PomodoroCanceled)
 					} else if action.Finished {
-						sData.isFinished = true
+						sData.IsFinished = true
 						endSessionHandler(userId, currentSession, PomodoroFinished)
 					}
 					break mainLoop
@@ -88,13 +89,13 @@ mainLoop:
 		default:
 			time.Sleep(1 * time.Second)
 
-			if sData.isRest {
+			if sData.IsRest {
 				sData.RestDuration -= 1
 
 				if sData.RestDuration <= 0 {
 					restFinishedHandler(userId, currentSession)
 					sData.RestDuration = currentSession.RestDurationSet
-					sData.isRest = false
+					sData.IsRest = false
 				}
 			} else {
 				sData.PomodoroDuration -= 1
@@ -103,14 +104,14 @@ mainLoop:
 					sData.SprintDuration -= 1
 
 					if sData.SprintDuration < 0 {
-						sData.isFinished = true
+						sData.IsFinished = true
 						endSessionHandler(userId, currentSession, PomodoroFinished)
 						return
 					}
 
 					restBeginHandler(userId, currentSession)
 					sData.PomodoroDuration = currentSession.PomodoroDurationSet
-					sData.isRest = true
+					sData.IsRest = true
 				}
 			}
 		}
@@ -118,33 +119,33 @@ mainLoop:
 	defer close(currentSession.ActionsChannel)
 }
 
-func PauseSession(currentSession *Session) error {
-	if currentSession.Data.isPaused {
+func PauseSession(currentSession *domain.Session) error {
+	if currentSession.Data.IsPaused {
 		return errors.New("sessionDefault already paused")
 	}
 
-	currentSession.WritingActionChannel() <- DispatchAction{Paused: true}
+	currentSession.WritingActionChannel() <- domain.DispatchAction{Paused: true}
 	return nil
 }
 
-func CancelSession(currentSession *Session) error {
+func CancelSession(currentSession *domain.Session) error {
 	if currentSession.IsCanceled() {
 		return errors.New("sessionDefault already canceled")
 	}
 
-	currentSession.WritingActionChannel() <- DispatchAction{Canceled: true}
+	currentSession.WritingActionChannel() <- domain.DispatchAction{Canceled: true}
 	return nil
 }
 
 func ResumeSession(
-	userId ChatID,
-	currentSession *Session,
-	restBeginHandler func(id ChatID, session *Session),
-	restFinishedHandler func(id ChatID, session *Session),
-	endSessionHandler func(id ChatID, session *Session, endKind PomodoroEndKind),
-	pauseSessionHandler func(id ChatID, session *Session),
+	userId domain.ChatID,
+	currentSession *domain.Session,
+	restBeginHandler func(id domain.ChatID, session *domain.Session),
+	restFinishedHandler func(id domain.ChatID, session *domain.Session),
+	endSessionHandler func(id domain.ChatID, session *domain.Session, endKind PomodoroEndKind),
+	pauseSessionHandler func(id domain.ChatID, session *domain.Session),
 ) error {
-	if currentSession.isZero() {
+	if currentSession.IsZero() {
 		return errors.New("the session is effectively nil")
 	}
 	if !currentSession.IsStopped() {
@@ -154,7 +155,7 @@ func ResumeSession(
 		return errors.New("session was canceled")
 	}
 
-	currentSession.Data.isPaused = false
+	currentSession.Data.IsPaused = false
 
 	currentSession.AssignTimestamps()
 

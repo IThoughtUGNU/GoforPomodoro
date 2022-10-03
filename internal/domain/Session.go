@@ -1,6 +1,7 @@
-package main
+package domain
 
 import (
+	"GoforPomodoro/internal/utils"
 	"fmt"
 	"log"
 	"time"
@@ -35,10 +36,10 @@ type SessionData struct {
 	// duration for the session.
 	RestDuration int
 
-	isRest     bool
-	isPaused   bool
-	isCancel   bool
-	isFinished bool
+	IsRest     bool
+	IsPaused   bool
+	IsCancel   bool
+	IsFinished bool
 }
 
 type Session struct {
@@ -115,7 +116,7 @@ func (s *Session) GetSprintDurationSet() int {
 }
 
 func (s *Session) IsRest() bool {
-	return s.Data.isRest
+	return s.Data.IsRest
 }
 
 func DefaultSession() Session {
@@ -147,15 +148,15 @@ func (s *Session) AssignTimestamps() {
 	if s.IsRest() {
 		restDurationTime = time.Second * time.Duration(s.Data.RestDuration)
 
-		s.EndNextRestTimestamp = timePtr(time.Now().Local().Add(restDurationTime))
+		s.EndNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(restDurationTime))
 
 	} else {
 		pomodoroDurationTime = time.Second * time.Duration(s.Data.PomodoroDuration)
 		restDurationTime = time.Second * time.Duration(s.RestDurationSet)
 
-		s.EndNextSprintTimestamp = timePtr(time.Now().Local().Add(pomodoroDurationTime))
+		s.EndNextSprintTimestamp = utils.TimePtr(time.Now().Local().Add(pomodoroDurationTime))
 
-		s.EndNextRestTimestamp = timePtr(time.Now().Local().Add(pomodoroDurationTime + restDurationTime))
+		s.EndNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(pomodoroDurationTime + restDurationTime))
 	}
 }
 
@@ -167,7 +168,7 @@ func (s *Session) WritingActionChannel() chan<- DispatchAction {
 	return s.ActionsChannel
 }
 
-func (s *Session) isZero() bool {
+func (s *Session) IsZero() bool {
 	return s == nil || s.GetPomodoroDurationSet() == 0
 }
 
@@ -188,28 +189,28 @@ func (s *Session) String() string {
 	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
 		s.GetSprintDurationSet(), s.GetPomodoroDurationSet()/60, s.GetRestDurationSet()/60) +
 		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
-		fmt.Sprintf("\nTime for current pomodoro remaining: %s", NiceTimeFormatting(s.GetPomodoroDuration())) +
-		fmt.Sprintf("\nRest time: %s", NiceTimeFormatting(s.GetRestDuration())) +
+		fmt.Sprintf("\nTime for current pomodoro remaining: %s", utils.NiceTimeFormatting(s.GetPomodoroDuration())) +
+		fmt.Sprintf("\nRest time: %s", utils.NiceTimeFormatting(s.GetRestDuration())) +
 		fmt.Sprintf("\n\nCurrent session state: %s", s.State())
 }
 
 func (s *Session) LeftTimeMessage() string {
-	if s.isZero() || s.IsCanceled() || s.IsStopped() {
+	if s.IsZero() || s.IsCanceled() || s.IsStopped() {
 		return "No running pomodoros!"
 	}
 	if s.IsRest() {
-		return "Rest for other " + NiceTimeFormatting(s.GetRestDuration())
+		return "Rest for other " + utils.NiceTimeFormatting(s.GetRestDuration())
 	} else {
-		return "Task time: " + NiceTimeFormatting(s.GetPomodoroDuration()) + " left."
+		return "Task time: " + utils.NiceTimeFormatting(s.GetPomodoroDuration()) + " left."
 	}
 }
 
 func (s *Session) IsStopped() bool {
 	if s.GetPomodoroDuration() <= 0 ||
 		s.GetSprintDuration() < 0 ||
-		s.Data.isPaused ||
-		s.Data.isCancel ||
-		s.Data.isFinished {
+		s.Data.IsPaused ||
+		s.Data.IsCancel ||
+		s.Data.IsFinished {
 		return true
 	}
 
@@ -217,15 +218,15 @@ func (s *Session) IsStopped() bool {
 }
 
 func (s *Session) IsCanceled() bool {
-	return s.Data.isCancel
+	return s.Data.IsCancel
 }
 
 func (s *Session) IsPaused() bool {
-	return s.Data.isPaused
+	return s.Data.IsPaused
 }
 
 func (s *Session) IsFinished() bool {
-	return s.Data.isFinished
+	return s.Data.IsFinished
 }
 
 func (s *Session) State() string {

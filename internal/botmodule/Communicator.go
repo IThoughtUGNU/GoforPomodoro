@@ -1,28 +1,38 @@
-package main
+package botmodule
 
 import (
+	"GoforPomodoro/internal/data"
+	"GoforPomodoro/internal/domain"
+	"GoforPomodoro/internal/sessionmanager"
+	"GoforPomodoro/internal/utils"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"strings"
 )
 
+var simpleHourglassKeyboard = tgbotapi.NewInlineKeyboardMarkup(
+	tgbotapi.NewInlineKeyboardRow(
+		tgbotapi.NewInlineKeyboardButtonData("⌛", "⌛"),
+	),
+)
+
 type Communicator struct {
-	appState *AppState
-	ChatID
+	appState *domain.AppState
+	domain.ChatID
 	Bot         *tgbotapi.BotAPI
-	Subscribers []ChatID
+	Subscribers []domain.ChatID
 	IsGroup     bool
 }
 
-func GetCommunicator(appState *AppState, chatId ChatID, bot *tgbotapi.BotAPI) *Communicator {
+func GetCommunicator(appState *domain.AppState, chatId domain.ChatID, bot *tgbotapi.BotAPI) *Communicator {
 	communicator := new(Communicator)
 
 	communicator.appState = appState
 	communicator.ChatID = chatId
 	communicator.Bot = bot
-	communicator.Subscribers = GetSubscribers(appState, chatId)
-	communicator.IsGroup = IsGroup(appState, chatId)
+	communicator.Subscribers = data.GetSubscribers(appState, chatId)
+	communicator.IsGroup = data.IsGroup(appState, chatId)
 
 	return communicator
 }
@@ -48,7 +58,7 @@ func (c *Communicator) subscribersAsString() string {
 
 func (c *Communicator) toNotify(message string) string {
 	// Update subscribers in case they changed
-	c.Subscribers = GetSubscribers(c.appState, c.ChatID)
+	c.Subscribers = data.GetSubscribers(c.appState, c.ChatID)
 
 	if !c.IsGroup || len(c.Subscribers) == 0 {
 		// This function is identity function if we're not in a group or there are no subscribers.
@@ -61,10 +71,10 @@ func (c *Communicator) toNotify(message string) string {
 func (c *Communicator) Subscribe(err error, update tgbotapi.Update, username string) {
 	if err != nil {
 		switch err.Error() {
-		case AlreadySubscribed{}.Error():
+		case domain.AlreadySubscribed{}.Error():
 			c.ReplyWith("You already subscribed this chat group.\n\n" +
 				"Remember you can use /leave to cancel subscription.")
-		case SubscriptionError{}.Error():
+		case domain.SubscriptionError{}.Error():
 			c.ReplyWith("There has been an error with this operation (subscription).")
 		}
 	} else {
@@ -75,9 +85,9 @@ func (c *Communicator) Subscribe(err error, update tgbotapi.Update, username str
 func (c *Communicator) Unsubscribe(err error) {
 	if err != nil {
 		switch err.Error() {
-		case AlreadyUnsubscribed{}.Error():
+		case domain.AlreadyUnsubscribed{}.Error():
 			c.ReplyWith("You are (were) not subscribed in this chat group.")
-		case SubscriptionError{}.Error():
+		case domain.SubscriptionError{}.Error():
 			c.ReplyWith("There has been an error with this operation (subscription).")
 		}
 	} else {
@@ -113,14 +123,14 @@ func (c *Communicator) ReplyWithAndHourglassAndNotify(text string) {
 	c.ReplyWithAndHourglass(c.toNotify(text))
 }
 
-func (c *Communicator) SessionStarted(session *Session, err error) {
+func (c *Communicator) SessionStarted(session *domain.Session, err error) {
 	if err == nil {
 		numberOfSprints := session.GetSprintDurationSet()
 		sessionTime := session.GetPomodoroDurationSet() * numberOfSprints
 		if numberOfSprints > 1 {
 			sessionTime += session.GetRestDurationSet() * (numberOfSprints - 1)
 		}
-		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", NiceTimeFormatting(sessionTime))
+		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", utils.NiceTimeFormatting(sessionTime))
 		c.ReplyWithAndHourglassAndNotify(replyStr)
 	} else {
 		c.ReplyWith("Session was not set.\nPlease set a session or use /default for classic 4x25m+25m.")
@@ -140,31 +150,31 @@ func (c *Communicator) SessionPaused() {
 
 }*/
 
-func (c *Communicator) SessionFinishedHandler(id ChatID, session *Session, endKind PomodoroEndKind) {
+func (c *Communicator) SessionFinishedHandler(id domain.ChatID, session *domain.Session, endKind sessionmanager.PomodoroEndKind) {
 	switch endKind {
-	case PomodoroFinished:
+	case sessionmanager.PomodoroFinished:
 		c.ReplyAndNotify("Pomodoro done! The session is complete, congratulations!")
-	case PomodoroCanceled:
+	case sessionmanager.PomodoroCanceled:
 		c.ReplyAndNotify("Session canceled.")
 	}
 }
 
-func (c *Communicator) SessionPausedHandler(id ChatID, session *Session) {
+func (c *Communicator) SessionPausedHandler(id domain.ChatID, session *domain.Session) {
 	c.ReplyAndNotify("Your session has paused.")
 }
 
-func (c *Communicator) RestFinishedHandler(id ChatID, session *Session) {
+func (c *Communicator) RestFinishedHandler(id domain.ChatID, session *domain.Session) {
 	text := fmt.Sprintf(
 		"Pomodoro %s started.",
-		NiceTimeFormatting(session.GetPomodoroDurationSet()),
+		utils.NiceTimeFormatting(session.GetPomodoroDurationSet()),
 	)
 	c.ReplyWithAndHourglassAndNotify(text)
 }
 
-func (c *Communicator) RestBeginHandler(id ChatID, session *Session) {
+func (c *Communicator) RestBeginHandler(id domain.ChatID, session *domain.Session) {
 	text := fmt.Sprintf(
 		"Pomodoro done! Have rest for %s now.",
-		NiceTimeFormatting(session.GetRestDurationSet()),
+		utils.NiceTimeFormatting(session.GetRestDurationSet()),
 	)
 
 	c.ReplyAndNotify(text)
@@ -174,9 +184,9 @@ func (c *Communicator) SessionAlreadyRunning() {
 	c.ReplyWith("A session already running.")
 }
 
-func (c *Communicator) SessionResumed(err error, session *Session) {
+func (c *Communicator) SessionResumed(err error, session *domain.Session) {
 	if err != nil {
-		if session.isZero() {
+		if session.IsZero() {
 			c.ReplyWith("Session was not set.")
 		} else if session.IsCanceled() {
 			c.ReplyWith("Last session was canceled.")
@@ -195,7 +205,7 @@ func (c *Communicator) OnlyGroupsCommand() {
 	c.ReplyWith("This command works only in groups, sorry.")
 }
 
-func (c *Communicator) NewSession(session Session) {
+func (c *Communicator) NewSession(session domain.Session) {
 	c.ReplyWith(fmt.Sprintf("New session!\n\n%s", session.String()))
 }
 
@@ -221,7 +231,7 @@ func (c *Communicator) Help() {
 		"/info to have some info on this bot.")
 }
 
-func (c *Communicator) SessionPaused(err error, session Session) {
+func (c *Communicator) SessionPaused(err error, session domain.Session) {
 	if err != nil {
 		if !session.IsStopped() {
 			c.ReplyWith("Session was not running.")
@@ -231,7 +241,7 @@ func (c *Communicator) SessionPaused(err error, session Session) {
 	}
 }
 
-func (c *Communicator) SessionCanceled(err error, session Session) {
+func (c *Communicator) SessionCanceled(err error, session domain.Session) {
 	if err != nil {
 		if session.IsStopped() {
 			c.ReplyWith("Session was not running.")
@@ -241,7 +251,7 @@ func (c *Communicator) SessionCanceled(err error, session Session) {
 	}
 }
 
-func (c *Communicator) SessionState(session Session) {
+func (c *Communicator) SessionState(session domain.Session) {
 	var stateStr = session.State()
 
 	var replyMsgText string

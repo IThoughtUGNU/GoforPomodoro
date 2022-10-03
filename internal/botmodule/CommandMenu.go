@@ -1,19 +1,14 @@
-package main
+package botmodule
 
 import (
-	"fmt"
-	"github.com/BurntSushi/toml"
+	"GoforPomodoro/internal/data"
+	"GoforPomodoro/internal/domain"
+	"GoforPomodoro/internal/inputprocess"
+	"GoforPomodoro/internal/sessionmanager"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
 	"strings"
 )
-
-func loadAppSettings() (*AppSettings, error) {
-	settings := new(AppSettings)
-	_, err := toml.DecodeFile("appsettings.toml", settings)
-
-	return settings, err
-}
 
 /*
 var numericKeyboard = tgbotapi.NewInlineKeyboardMarkup(
@@ -29,19 +24,10 @@ var numericKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 	),
 )*/
 
-func main() {
-	settings, err := loadAppSettings()
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	appState, err := LoadAppState()
-	if err != nil {
-		panic(err)
-	}
-
-	fmt.Println("Hello from Go for Pomodoro!")
-
+func CommandMenuLoop(
+	settings *domain.AppSettings,
+	appState *domain.AppState,
+) {
 	bot, err := tgbotapi.NewBotAPI(settings.ApiToken)
 	if err != nil {
 		log.Panic(err)
@@ -59,8 +45,8 @@ func main() {
 	for update := range updates {
 		if update.Message != nil { // If we got a message
 
-			senderId := ChatID(update.Message.From.ID)
-			chatId := ChatID(update.Message.Chat.ID)
+			senderId := domain.ChatID(update.Message.From.ID)
+			chatId := domain.ChatID(update.Message.Chat.ID)
 
 			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
 
@@ -69,12 +55,12 @@ func main() {
 			// var replyMsg tgbotapi.MessageConfig
 			// var replyMsgText string
 
-			command := commandFrom(settings, msgText)
-			parameters := parametersFrom(msgText)
+			command := inputprocess.CommandFrom(settings, msgText)
+			parameters := inputprocess.ParametersFrom(msgText)
 			log.Printf("command: %s\n", command)
 
 			isGroup := update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup()
-			AdjustChatType(appState, chatId, senderId, isGroup)
+			data.AdjustChatType(appState, chatId, senderId, isGroup)
 
 			communicator := GetCommunicator(appState, chatId, bot)
 			switch command {
@@ -90,10 +76,8 @@ func main() {
 					continue
 				}
 
-				// ReplyWith(bot, update, "Your username: @"+senderChat.UserName)
-
 				communicator.Subscribe(
-					SubscribeUserInGroup(appState, chatId, senderId),
+					data.SubscribeUserInGroup(appState, chatId, senderId),
 					update,
 					senderChat.UserName,
 				)
@@ -103,7 +87,7 @@ func main() {
 					continue
 				}
 
-				communicator.Unsubscribe(UnsubscribeUser(appState, chatId, senderId))
+				communicator.Unsubscribe(data.UnsubscribeUser(appState, chatId, senderId))
 			// Personal commands
 			case "/autorun":
 				if len(parameters) > 0 {
@@ -117,45 +101,45 @@ func main() {
 						communicator.CommandError()
 						continue
 					}
-					SetUserAutorun(appState, chatId, senderId, autorun)
-					ReplyWith(bot, update, "Autorun set "+strings.ToUpper(param)+".")
+					data.SetUserAutorun(appState, chatId, senderId, autorun)
+					communicator.ReplyWith("Autorun set " + strings.ToUpper(param) + ".")
 				} else {
-					SetUserAutorun(appState, chatId, senderId, true)
-					ReplyWith(bot, update, "Autorun set ON.")
+					data.SetUserAutorun(appState, chatId, senderId, true)
+					communicator.ReplyWith("Autorun set ON.")
 				}
 			case "/se", "/session":
-				session := GetUserSessionRunning(appState, chatId, senderId)
+				session := data.GetUserSessionRunning(appState, chatId, senderId)
 				communicator.SessionState(*session)
 			case "/p", "/pause":
-				session := GetUserSessionRunning(appState, chatId, senderId)
-				err := PauseSession(session)
+				session := data.GetUserSessionRunning(appState, chatId, senderId)
+				err := sessionmanager.PauseSession(session)
 				communicator.SessionPaused(err, *session)
 			case "/c", "/cancel":
-				session := GetUserSessionRunning(appState, chatId, senderId)
-				err := CancelSession(session)
+				session := data.GetUserSessionRunning(appState, chatId, senderId)
+				err := sessionmanager.CancelSession(session)
 				communicator.SessionCanceled(err, *session)
 			case "/resume":
 				ActionResumeSprint(update, appState, communicator)
 			case "/d", "/default":
-				UpdateUserSession(appState, chatId, senderId, DefaultSession())
+				data.UpdateUserSession(appState, chatId, senderId, domain.DefaultSession())
 				ActionStartSprint(update, appState, communicator)
 			case "/s", "/start_sprint":
 				ActionStartSprint(update, appState, communicator)
 			case "/reset":
-				CleanUserSettings(appState, chatId, senderId)
+				data.CleanUserSettings(appState, chatId, senderId)
 				communicator.DataCleaned()
 			case "/help":
 				communicator.Help()
 			case "/info":
 				communicator.Info()
 			default:
-				newSession := ParsePatternToSession(nil, msgText)
+				newSession := inputprocess.ParsePatternToSession(nil, msgText)
 
 				if newSession != nil {
-					UpdateUserSession(appState, chatId, senderId, *newSession)
+					data.UpdateUserSession(appState, chatId, senderId, *newSession)
 					communicator.NewSession(*newSession)
 
-					autorun := GetUserAutorun(appState, chatId, senderId)
+					autorun := data.GetUserAutorun(appState, chatId, senderId)
 					if autorun {
 						ActionStartSprint(update, appState, communicator)
 					}
@@ -167,23 +151,25 @@ func main() {
 
 			switch update.CallbackQuery.Data {
 			case "⌛":
-				chatId := ChatID(update.CallbackQuery.Message.Chat.ID)
-				senderId := ChatID(update.CallbackQuery.Message.From.ID)
+				chatId := domain.ChatID(update.CallbackQuery.Message.Chat.ID)
+				senderId := domain.ChatID(update.CallbackQuery.Message.From.ID)
 
-				session := GetUserSessionRunning(appState, chatId, senderId)
+				session := data.GetUserSessionRunning(appState, chatId, senderId)
+
+				// We reply with a toast (callback)
 				toastText := session.LeftTimeMessage()
 				callback := tgbotapi.NewCallback(update.CallbackQuery.ID, toastText)
 				if _, err := bot.Request(callback); err != nil {
-					// panic(err)
 					log.Println("[ERROR] " + err.Error())
 				}
+
+				// To reply with a message
+				// sg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data)
+				// if _, err := bot.Send(msg); err != nil {
+				// 	   // manage error
+				// }
+
 			}
-			/*
-				// And finally, send a message containing the data received.
-				msg := tgbotapi.NewMessage(update.CallbackQuery.Message.Chat.ID, update.CallbackQuery.Data)
-				if _, err := bot.Send(msg); err != nil {
-					panic(err)
-				}*/
 		}
 	}
 }
