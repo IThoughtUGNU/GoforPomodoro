@@ -132,6 +132,8 @@ func CommandMenuLoop(
 				communicator.Help()
 			case "/info":
 				communicator.Info()
+			case "/clessidra":
+				communicator.Hourglass()
 			default:
 				newSession := inputprocess.ParsePatternToSession(nil, msgText)
 

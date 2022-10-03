@@ -189,16 +189,20 @@ func (s *Session) String() string {
 		return "No session"
 	}
 
+	var middleStr string
 	sprintDuration := s.GetSprintDuration()
 	if s.IsRest() {
 		sprintDuration += 1
+
+		middleStr = fmt.Sprintf("\nTime for current rest remaining: %s", utils.NiceTimeFormatting(s.GetRestDuration()))
+	} else {
+		middleStr = fmt.Sprintf("\nTime for current pomodoro remaining: %s", utils.NiceTimeFormatting(s.GetPomodoroDuration()))
 	}
 
 	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
 		s.GetSprintDurationSet(), s.GetPomodoroDurationSet()/60, s.GetRestDurationSet()/60) +
 		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
-		fmt.Sprintf("\nTime for current pomodoro remaining: %s", utils.NiceTimeFormatting(s.GetPomodoroDuration())) +
-		fmt.Sprintf("\nRest time: %s", utils.NiceTimeFormatting(s.GetRestDuration())) +
+		middleStr +
 		fmt.Sprintf("\n\nCurrent session state: %s", s.State())
 }
 

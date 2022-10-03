@@ -266,3 +266,7 @@ func (c *Communicator) SessionState(session domain.Session) {
 func (c *Communicator) CommandError() {
 	c.ReplyWith("Command error.")
 }
+
+func (c *Communicator) Hourglass() {
+	c.ReplyWithAndHourglass("Here is an hourglass")
+}
