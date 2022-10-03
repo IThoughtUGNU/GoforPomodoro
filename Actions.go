@@ -28,7 +28,7 @@ func ActionStartSprint(update tgbotapi.Update, appState *AppState, communicator 
 
 	session := GetUserSessionRunning(appState, chatId, senderId)
 
-	if !session.isStopped() {
+	if !session.IsStopped() {
 		communicator.SessionAlreadyRunning()
 		return
 	}

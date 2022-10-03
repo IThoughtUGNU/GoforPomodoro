@@ -43,10 +43,10 @@ func ParsePatternToSession(r *regexp.Regexp, text string) *Session {
 
 	for _, v := range matches {
 		if session == nil {
-			session = new(Session)
+			session = new(Session).Init()
 			session.SprintDurationSet = 1
-			session.SprintDuration = 1
-			session.isPaused = true
+			session.Data.SprintDuration = 1
+			session.Data.isPaused = true
 		}
 
 		// Mandatory parameter for this command.
@@ -55,23 +55,23 @@ func ParsePatternToSession(r *regexp.Regexp, text string) *Session {
 			return nil
 		}
 		session.PomodoroDurationSet = pomDuration * 60 // time from minutes to seconds.
-		session.PomodoroDuration = session.PomodoroDurationSet
+		session.Data.PomodoroDuration = session.PomodoroDurationSet
 
 		// Other parameters are optional
 		sprintDuration, err := strconv.Atoi(v[CardinalityGroup])
 		if err == nil {
 			session.SprintDurationSet = sprintDuration
-			session.SprintDuration = session.SprintDurationSet
+			session.Data.SprintDuration = session.SprintDurationSet
 
 			// Default 5 minutes of rest duration in case user did not specify.
 			session.RestDurationSet = 5 * 60
-			session.RestDuration = session.RestDurationSet
+			session.Data.RestDuration = session.RestDurationSet
 		}
 
 		restDuration, err := strconv.Atoi(v[RestGroup])
 		if err == nil {
 			session.RestDurationSet = restDuration * 60
-			session.RestDuration = session.RestDurationSet
+			session.Data.RestDuration = session.RestDurationSet
 		}
 
 		break

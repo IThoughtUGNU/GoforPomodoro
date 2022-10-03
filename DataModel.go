@@ -102,14 +102,14 @@ func GetUserSessionFromSettings(appState *AppState, chatId ChatID, senderId Chat
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	session := &appState.usersSettings[chatId].sessionDefault
-	session.isPaused = true
+	session.Data.isPaused = true
 	return session
 }
 
 func GetNewUserSessionRunning(appState *AppState, chatId ChatID, senderId ChatID) *Session {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.usersSettings[chatId].sessionRunning = new(Session)
+	appState.usersSettings[chatId].sessionRunning = new(Session).Init()
 
 	sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
@@ -118,10 +118,10 @@ func GetNewUserSessionRunning(appState *AppState, chatId ChatID, senderId ChatID
 	sessionRunning.SprintDurationSet = sessionDef.SprintDurationSet
 	sessionRunning.RestDurationSet = sessionDef.RestDurationSet
 
-	sessionRunning.PomodoroDuration = sessionDef.PomodoroDuration
-	sessionRunning.SprintDuration = sessionDef.SprintDuration
-	sessionRunning.RestDuration = sessionDef.RestDuration
-	sessionRunning.isPaused = true
+	sessionRunning.Data.PomodoroDuration = sessionDef.PomodoroDurationSet
+	sessionRunning.Data.SprintDuration = sessionDef.SprintDurationSet
+	sessionRunning.Data.RestDuration = sessionDef.RestDurationSet
+	sessionRunning.Data.isPaused = true
 
 	return sessionRunning
 }
@@ -132,7 +132,7 @@ func GetUserSessionRunning(appState *AppState, chatId ChatID, senderId ChatID) *
 	var sessionRunning *Session
 
 	if appState.usersSettings[chatId].sessionRunning == nil {
-		appState.usersSettings[chatId].sessionRunning = new(Session)
+		appState.usersSettings[chatId].sessionRunning = new(Session).Init()
 
 		sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
@@ -142,11 +142,11 @@ func GetUserSessionRunning(appState *AppState, chatId ChatID, senderId ChatID) *
 		sessionRunning.SprintDurationSet = sessionDef.SprintDurationSet
 		sessionRunning.RestDurationSet = sessionDef.RestDurationSet
 
-		sessionRunning.PomodoroDuration = sessionDef.PomodoroDuration
-		sessionRunning.SprintDuration = sessionDef.SprintDuration
-		sessionRunning.RestDuration = sessionDef.RestDuration
+		sessionRunning.Data.PomodoroDuration = sessionDef.PomodoroDurationSet
+		sessionRunning.Data.SprintDuration = sessionDef.SprintDurationSet
+		sessionRunning.Data.RestDuration = sessionDef.RestDurationSet
 
-		sessionRunning.isPaused = true
+		sessionRunning.Data.isPaused = true
 	} else {
 		sessionRunning = appState.usersSettings[chatId].sessionRunning
 	}

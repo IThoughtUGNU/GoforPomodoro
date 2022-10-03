@@ -115,10 +115,10 @@ func (c *Communicator) ReplyWithAndHourglassAndNotify(text string) {
 
 func (c *Communicator) SessionStarted(session *Session, err error) {
 	if err == nil {
-		numberOfSprints := session.SprintDurationSet
-		sessionTime := session.PomodoroDurationSet * numberOfSprints
+		numberOfSprints := session.GetSprintDurationSet()
+		sessionTime := session.GetPomodoroDurationSet() * numberOfSprints
 		if numberOfSprints > 1 {
-			sessionTime += session.RestDurationSet * (numberOfSprints - 1)
+			sessionTime += session.GetRestDurationSet() * (numberOfSprints - 1)
 		}
 		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", NiceTimeFormatting(sessionTime))
 		c.ReplyWithAndHourglassAndNotify(replyStr)
@@ -156,7 +156,7 @@ func (c *Communicator) SessionPausedHandler(id ChatID, session *Session) {
 func (c *Communicator) RestFinishedHandler(id ChatID, session *Session) {
 	text := fmt.Sprintf(
 		"Pomodoro %s started.",
-		NiceTimeFormatting(session.PomodoroDurationSet),
+		NiceTimeFormatting(session.GetPomodoroDurationSet()),
 	)
 	c.ReplyWithAndHourglassAndNotify(text)
 }
@@ -164,7 +164,7 @@ func (c *Communicator) RestFinishedHandler(id ChatID, session *Session) {
 func (c *Communicator) RestBeginHandler(id ChatID, session *Session) {
 	text := fmt.Sprintf(
 		"Pomodoro done! Have rest for %s now.",
-		NiceTimeFormatting(session.RestDurationSet),
+		NiceTimeFormatting(session.GetRestDurationSet()),
 	)
 
 	c.ReplyAndNotify(text)
@@ -178,9 +178,9 @@ func (c *Communicator) SessionResumed(err error, session *Session) {
 	if err != nil {
 		if session.isZero() {
 			c.ReplyWith("Session was not set.")
-		} else if session.isCancel {
+		} else if session.IsCanceled() {
 			c.ReplyWith("Last session was canceled.")
-		} else if !session.isStopped() {
+		} else if !session.IsStopped() {
 			c.ReplyWith("Session is already running.")
 		} else {
 			c.ReplyWith("Server error.")
@@ -223,7 +223,7 @@ func (c *Communicator) Help() {
 
 func (c *Communicator) SessionPaused(err error, session Session) {
 	if err != nil {
-		if !session.isStopped() {
+		if !session.IsStopped() {
 			c.ReplyWith("Session was not running.")
 		} else {
 			c.ReplyWith("Server error.")
@@ -233,7 +233,7 @@ func (c *Communicator) SessionPaused(err error, session Session) {
 
 func (c *Communicator) SessionCanceled(err error, session Session) {
 	if err != nil {
-		if session.isStopped() {
+		if session.IsStopped() {
 			c.ReplyWith("Session was not running.")
 		} else {
 			c.ReplyWith("Server error.")
@@ -245,7 +245,7 @@ func (c *Communicator) SessionState(session Session) {
 	var stateStr = session.State()
 
 	var replyMsgText string
-	if session.isCancel {
+	if session.IsCanceled() {
 		replyMsgText = fmt.Sprintf("Your session state: %s.", stateStr)
 	} else {
 		replyMsgText = session.String()

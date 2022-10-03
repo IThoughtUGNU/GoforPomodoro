@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"time"
 )
 
 func NiceTimeFormatting(seconds int) string {
@@ -78,4 +79,8 @@ func AfterRemoveEl[T comparable](s []T, el T) ([]T, error) {
 	}
 
 	return AfterRemove(s, index), nil
+}
+
+func timePtr(t time.Time) *time.Time {
+	return &t
 }
