@@ -68,8 +68,29 @@ mainLoop:
 		select {
 		case action, ok := <-currentSession.ReadingActionChannel():
 			if ok {
+				// The event was internal (rest started/finished)
+				if action.RestStarted || action.RestFinished {
+					if action.RestStarted {
+						sData.IsRest = true
+						sData.RestDuration = currentSession.RestDurationSet
+						restBeginHandler(userId, currentSession)
+					}
+					if action.RestFinished {
+						sData.IsRest = false
+						sData.PomodoroDuration = currentSession.PomodoroDurationSet
+						restFinishedHandler(userId, currentSession)
+					}
+					currentSession.AssignTimestamps()
+					continue mainLoop
+				}
+
+				// The event was either external (paused/canceled) or internal (finished)
 				if action.Paused || action.Canceled || action.Finished {
 					if action.Paused {
+						// Cache pomodoro and rest duration. We will use them again to assign new timestamps.
+						sData.PomodoroDuration = currentSession.GetPomodoroDuration()
+						sData.RestDuration = currentSession.GetRestDuration()
+
 						sData.IsPaused = true
 						pauseSessionHandler(userId, currentSession)
 					} else if action.Canceled {
@@ -89,34 +110,30 @@ mainLoop:
 		default:
 			time.Sleep(1 * time.Second)
 
-			if sData.IsRest {
-				sData.RestDuration -= 1
+			isRest := currentSession.Data.IsRest
 
-				if sData.RestDuration <= 0 {
-					restFinishedHandler(userId, currentSession)
-					sData.RestDuration = currentSession.RestDurationSet
-					sData.IsRest = false
+			if !isRest && time.Now().Local().After(*currentSession.EndNextSprintTimestamp) {
+				currentSession.Data.SprintDuration -= 1
+
+				if currentSession.Data.SprintDuration < 0 {
+					currentSession.WritingActionChannel() <- domain.DispatchAction{Finished: true}
+					continue mainLoop
 				}
-			} else {
-				sData.PomodoroDuration -= 1
 
-				if sData.PomodoroDuration <= 0 && sData.SprintDuration > 0 {
-					sData.SprintDuration -= 1
+				// if SprintDuration still >= 0, we have rest now
+				currentSession.WritingActionChannel() <- domain.DispatchAction{RestStarted: true}
+				continue mainLoop
+			} else if isRest && time.Now().Local().After(*currentSession.EndNextRestTimestamp) {
 
-					if sData.SprintDuration < 0 {
-						sData.IsFinished = true
-						endSessionHandler(userId, currentSession, PomodoroFinished)
-						return
-					}
-
-					restBeginHandler(userId, currentSession)
-					sData.PomodoroDuration = currentSession.PomodoroDurationSet
-					sData.IsRest = true
-				}
+				currentSession.WritingActionChannel() <- domain.DispatchAction{RestFinished: true}
+				continue mainLoop
 			}
 		}
 	}
-	defer close(currentSession.ActionsChannel)
+	defer func() {
+		close(currentSession.ActionsChannel)
+		currentSession.ActionsChannel = nil
+	}()
 }
 
 func PauseSession(currentSession *domain.Session) error {

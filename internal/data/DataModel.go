@@ -121,7 +121,7 @@ func GetUserSessionFromSettings(appState *domain.AppState, chatId domain.ChatID,
 func GetNewUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) *domain.Session {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettings[chatId].SessionRunning = new(domain.Session).Init()
+	appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
 
 	sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
@@ -144,7 +144,7 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 	var sessionRunning *domain.Session
 
 	if appState.UsersSettings[chatId].SessionRunning == nil {
-		appState.UsersSettings[chatId].SessionRunning = new(domain.Session).Init()
+		appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
 
 		sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
@@ -161,7 +161,10 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 		sessionRunning.Data.IsPaused = true
 	} else {
 		sessionRunning = appState.UsersSettings[chatId].SessionRunning
-	}
 
+		if sessionRunning.ActionsChannel == nil {
+			sessionRunning = sessionRunning.InitChannel()
+		}
+	}
 	return sessionRunning
 }

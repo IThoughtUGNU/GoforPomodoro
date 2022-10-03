@@ -8,10 +8,12 @@ import (
 )
 
 type DispatchAction struct {
-	Paused   bool
-	Canceled bool
-	Finished bool
-	Resumed  bool
+	Paused       bool
+	Canceled     bool
+	Finished     bool
+	Resumed      bool
+	RestStarted  bool
+	RestFinished bool
 }
 
 type SessionData struct {
@@ -79,6 +81,9 @@ type Session struct {
 }
 
 func (s *Session) GetRestDuration() int {
+	if s.IsFinished() {
+		return 0
+	}
 
 	if s.EndNextRestTimestamp == nil || s.IsPaused() {
 		log.Println("Fallback to s.RestDuration")
@@ -95,6 +100,10 @@ func (s *Session) GetRestDurationSet() int {
 }
 
 func (s *Session) GetPomodoroDuration() int {
+	if s.IsFinished() {
+		return 0
+	}
+
 	if s.EndNextSprintTimestamp == nil || s.IsPaused() {
 		log.Println("Fallback to s.PomodoroDuration")
 		return s.Data.PomodoroDuration
@@ -133,7 +142,7 @@ func DefaultSession() Session {
 	}
 }
 
-func (s *Session) Init() *Session {
+func (s *Session) InitChannel() *Session {
 	s.ActionsChannel = make(chan DispatchAction, 10)
 	return s
 }
@@ -149,7 +158,6 @@ func (s *Session) AssignTimestamps() {
 		restDurationTime = time.Second * time.Duration(s.Data.RestDuration)
 
 		s.EndNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(restDurationTime))
-
 	} else {
 		pomodoroDurationTime = time.Second * time.Duration(s.Data.PomodoroDuration)
 		restDurationTime = time.Second * time.Duration(s.RestDurationSet)
@@ -195,6 +203,9 @@ func (s *Session) String() string {
 }
 
 func (s *Session) LeftTimeMessage() string {
+	if s.IsPaused() && !s.IsFinished() {
+		return "Pomodoro in pause. (use /resume)"
+	}
 	if s.IsZero() || s.IsCanceled() || s.IsStopped() {
 		return "No running pomodoros!"
 	}

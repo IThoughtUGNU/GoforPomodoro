@@ -44,7 +44,7 @@ func ParsePatternToSession(r *regexp.Regexp, text string) *domain.Session {
 
 	for _, v := range matches {
 		if session == nil {
-			session = new(domain.Session).Init()
+			session = new(domain.Session).InitChannel()
 			session.SprintDurationSet = 1
 			session.Data.SprintDuration = 1
 			session.Data.IsPaused = true
