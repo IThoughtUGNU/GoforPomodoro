@@ -16,27 +16,43 @@ type DispatchAction struct {
 	RestFinished bool
 }
 
+type SprintDuration int
+type PomodoroDuration int64
+type RestDuration int64
+
+func (d SprintDuration) ToInt() int {
+	return int(d)
+}
+
+func (d PomodoroDuration) Seconds() int {
+	return int(d)
+}
+
+func (d RestDuration) Seconds() int {
+	return int(d)
+}
+
 type SessionData struct {
 	// SprintDuration captures the number of sprints that the session has yet.
 	// It can be updated during the run of a session.
 	//
 	// Use SprintDurationSet if you want to refer to the total number of
 	// sprints.
-	SprintDuration int
+	SprintDuration
 
 	// PomodoroDuration is used with reference to how much time is left for the
 	// current pomodoro in run.
 	//
 	// Use PomodoroDurationSet if you want to refer to the defined pomodoro
 	// duration for the session.
-	PomodoroDuration int
+	PomodoroDuration
 
 	// RestDuration is used with reference to how much time is left for the
 	// current pomodoro rest in run.
 	//
 	// Use RestDurationSet if you want to refer to the defined pomodoro rest
 	// duration for the session.
-	RestDuration int
+	RestDuration
 
 	IsRest     bool
 	IsPaused   bool
@@ -44,97 +60,139 @@ type SessionData struct {
 	IsFinished bool
 }
 
+// SessionInitData represents a struct you use to initialize a session.
+type SessionInitData struct {
+	SprintDurationSet   SprintDuration
+	PomodoroDurationSet PomodoroDuration
+	RestDurationSet     RestDuration
+
+	SprintDuration
+	PomodoroDuration
+	RestDuration
+
+	IsRest     bool
+	IsPaused   bool
+	IsCancel   bool
+	IsFinished bool
+}
+
+func (sid SessionInitData) ToSession() (s *Session) {
+	s = new(Session)
+
+	s.sprintDurationSet = sid.SprintDurationSet
+	s.pomodoroDurationSet = sid.PomodoroDurationSet
+	s.restDurationSet = sid.RestDurationSet
+
+	s.data.SprintDuration = sid.SprintDuration
+	s.data.PomodoroDuration = sid.PomodoroDuration
+	s.data.RestDuration = sid.RestDuration
+
+	return
+}
+
+func (s *Session) ToInitData() (sid SessionInitData) {
+	sid.SprintDurationSet = s.sprintDurationSet
+	sid.PomodoroDurationSet = s.pomodoroDurationSet
+	sid.RestDurationSet = s.restDurationSet
+
+	sid.SprintDuration = s.data.SprintDuration
+	sid.PomodoroDuration = s.data.PomodoroDuration
+	sid.RestDuration = s.data.RestDuration
+
+	return
+}
+
 type Session struct {
 	ActionsChannel chan DispatchAction
 
-	EndNextSprintTimestamp *time.Time
-	EndNextRestTimestamp   *time.Time
+	endNextSprintTimestamp *time.Time
+	endNextRestTimestamp   *time.Time
 
-	// SprintDurationSet represents how many sprints the session is the session
+	// sprintDurationSet represents how many sprints the session is the session
 	// intended to have.
 	//
-	// For example, SprintDurationSet == 4 means that there will be 4 different
+	// For example, sprintDurationSet == 4 means that there will be 4 different
 	// sprints in the session, separated by (4-1) rests.
 	//
 	// Unlike SprintDuration, this variable is intended to be kept constant
 	// during all the session. SprintDuration is used with reference to how
 	// many sprints are left.
-	SprintDurationSet int
+	sprintDurationSet SprintDuration
 
-	// PomodoroDurationSet represents the time of duration of a pomodoro
+	// pomodoroDurationSet represents the time of duration of a pomodoro
 	// expressed in SECONDS.
 	//
 	// Unlike PomodoroDuration, this variable is intended to be kept constant
 	// during all the session. PomodoroDuration is used with reference to how
 	// much time is left for the current pomodoro in run.
-	PomodoroDurationSet int
+	pomodoroDurationSet PomodoroDuration
 
-	// RestDurationSet represents the time of rest duration of a pomodoro
+	// restDurationSet represents the time of rest duration of a pomodoro
 	// expressed in SECONDS.
 	//
 	// Unlike RestDuration, this variable is intended to be kept constant
 	// during all the session. RestDuration is used with reference to how
 	// much time is left for the current pomodoro rest in run.
-	RestDurationSet int
+	restDurationSet RestDuration
 
-	Data SessionData
+	data SessionData
 }
 
-func (s *Session) GetRestDuration() int {
+func (s *Session) GetRestDuration() RestDuration {
 	if s.IsFinished() {
 		return 0
 	}
 
-	if s.EndNextRestTimestamp == nil || s.IsPaused() {
+	if s.endNextRestTimestamp == nil || s.IsPaused() {
 		log.Println("Fallback to s.RestDuration")
-		return s.Data.RestDuration
+		return s.data.RestDuration
 	}
 
-	return int(s.EndNextRestTimestamp.Sub(time.Now()).Seconds()) // s.PomodoroDuration
+	return RestDuration(s.endNextRestTimestamp.Sub(time.Now()).Seconds()) // s.PomodoroDuration
 
 	// return s.RestDuration
 }
 
-func (s *Session) GetRestDurationSet() int {
-	return s.RestDurationSet
+func (s *Session) GetRestDurationSet() RestDuration {
+	return s.restDurationSet
 }
 
-func (s *Session) GetPomodoroDuration() int {
+func (s *Session) GetPomodoroDuration() PomodoroDuration {
 	if s.IsFinished() {
 		return 0
 	}
 
-	if s.EndNextSprintTimestamp == nil || s.IsPaused() {
+	if s.endNextSprintTimestamp == nil || s.IsPaused() {
 		log.Println("Fallback to s.PomodoroDuration")
-		return s.Data.PomodoroDuration
+		return s.data.PomodoroDuration
 	}
 
-	return int(s.EndNextSprintTimestamp.Sub(time.Now()).Seconds()) // s.PomodoroDuration
+	return PomodoroDuration(s.endNextSprintTimestamp.Sub(time.Now()).Seconds())
 }
 
-func (s *Session) GetPomodoroDurationSet() int {
-	return s.PomodoroDurationSet
+func (s *Session) GetPomodoroDurationSet() PomodoroDuration {
+	return s.pomodoroDurationSet
 }
 
-func (s *Session) GetSprintDuration() int {
-	return s.Data.SprintDuration
+func (s *Session) GetSprintDuration() SprintDuration {
+	return s.data.SprintDuration
 }
 
-func (s *Session) GetSprintDurationSet() int {
-	return s.SprintDurationSet
+func (s *Session) GetSprintDurationSet() SprintDuration {
+	return s.sprintDurationSet
 }
 
 func (s *Session) IsRest() bool {
-	return s.Data.IsRest
+	return s.data.IsRest
 }
 
 func DefaultSession() Session {
 	return Session{
-		SprintDurationSet:   4,
-		PomodoroDurationSet: 25 * 60,
-		RestDurationSet:     25 * 60,
+		sprintDurationSet:   4,
+		pomodoroDurationSet: 25 * 60,
+		restDurationSet:     25 * 60,
 
-		Data: SessionData{
+		data: SessionData{
 			SprintDuration:   4,
 			PomodoroDuration: 25 * 60,
 			RestDuration:     25 * 60,
@@ -148,23 +206,23 @@ func (s *Session) InitChannel() *Session {
 }
 
 func (s *Session) AssignTimestamps() {
-	s.EndNextSprintTimestamp = nil
-	s.EndNextRestTimestamp = nil
+	s.endNextSprintTimestamp = nil
+	s.endNextRestTimestamp = nil
 
 	var pomodoroDurationTime time.Duration = 0
 	var restDurationTime time.Duration = 0
 
 	if s.IsRest() {
-		restDurationTime = time.Second * time.Duration(s.Data.RestDuration)
+		restDurationTime = time.Second * time.Duration(s.data.RestDuration)
 
-		s.EndNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(restDurationTime))
+		s.endNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(restDurationTime))
 	} else {
-		pomodoroDurationTime = time.Second * time.Duration(s.Data.PomodoroDuration)
-		restDurationTime = time.Second * time.Duration(s.RestDurationSet)
+		pomodoroDurationTime = time.Second * time.Duration(s.data.PomodoroDuration)
+		restDurationTime = time.Second * time.Duration(s.restDurationSet)
 
-		s.EndNextSprintTimestamp = utils.TimePtr(time.Now().Local().Add(pomodoroDurationTime))
+		s.endNextSprintTimestamp = utils.TimePtr(time.Now().Local().Add(pomodoroDurationTime))
 
-		s.EndNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(pomodoroDurationTime + restDurationTime))
+		s.endNextRestTimestamp = utils.TimePtr(time.Now().Local().Add(pomodoroDurationTime + restDurationTime))
 	}
 }
 
@@ -194,9 +252,9 @@ func (s *Session) String() string {
 	if s.IsRest() {
 		sprintDuration += 1
 
-		middleStr = fmt.Sprintf("\nTime for current rest remaining: %s", utils.NiceTimeFormatting(s.GetRestDuration()))
+		middleStr = fmt.Sprintf("\nTime for current rest remaining: %s", utils.NiceTimeFormatting(s.GetRestDuration().Seconds()))
 	} else {
-		middleStr = fmt.Sprintf("\nTime for current pomodoro remaining: %s", utils.NiceTimeFormatting(s.GetPomodoroDuration()))
+		middleStr = fmt.Sprintf("\nTime for current pomodoro remaining: %s", utils.NiceTimeFormatting(s.GetPomodoroDuration().Seconds()))
 	}
 
 	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
@@ -214,18 +272,18 @@ func (s *Session) LeftTimeMessage() string {
 		return "No running pomodoros!"
 	}
 	if s.IsRest() {
-		return "Rest for other " + utils.NiceTimeFormatting(s.GetRestDuration())
+		return "Rest for other " + utils.NiceTimeFormatting(s.GetRestDuration().Seconds())
 	} else {
-		return "Task time: " + utils.NiceTimeFormatting(s.GetPomodoroDuration()) + " left."
+		return "Task time: " + utils.NiceTimeFormatting(s.GetPomodoroDuration().Seconds()) + " left."
 	}
 }
 
 func (s *Session) IsStopped() bool {
 	if s.GetPomodoroDuration() <= 0 ||
 		s.GetSprintDuration() < 0 ||
-		s.Data.IsPaused ||
-		s.Data.IsCancel ||
-		s.Data.IsFinished {
+		s.data.IsPaused ||
+		s.data.IsCancel ||
+		s.data.IsFinished {
 		return true
 	}
 
@@ -233,15 +291,15 @@ func (s *Session) IsStopped() bool {
 }
 
 func (s *Session) IsCanceled() bool {
-	return s.Data.IsCancel
+	return s.data.IsCancel
 }
 
 func (s *Session) IsPaused() bool {
-	return s.Data.IsPaused
+	return s.data.IsPaused
 }
 
 func (s *Session) IsFinished() bool {
-	return s.Data.IsFinished
+	return s.data.IsFinished
 }
 
 func (s *Session) State() string {
@@ -265,4 +323,74 @@ func (s *Session) State() string {
 		stateStr = "Running"
 	}
 	return stateStr
+}
+
+func (s *Session) Pause() {
+	// Cache pomodoro and rest duration. We will use them again to assign new timestamps.
+	s.data.PomodoroDuration = s.GetPomodoroDuration()
+	s.data.RestDuration = s.GetRestDuration()
+
+	s.data.IsPaused = true
+}
+
+func (s *Session) Cancel() {
+	s.data.IsCancel = true
+}
+
+func (s *Session) SetFinished() {
+	s.data.IsFinished = true
+}
+
+func (s *Session) Resume() {
+	s.data.IsPaused = false
+
+	s.AssignTimestamps()
+}
+
+func (s *Session) Start() {
+	s.data.IsPaused = false
+	s.data.IsCancel = false
+
+	s.data.SprintDuration -= 1
+
+	s.AssignTimestamps()
+}
+
+func (s *Session) RestStarted() {
+	s.data.IsRest = true
+	s.data.RestDuration = s.restDurationSet
+	s.AssignTimestamps()
+}
+
+func (s *Session) RestFinished() {
+	s.data.IsRest = false
+	s.data.PomodoroDuration = s.pomodoroDurationSet
+	s.AssignTimestamps()
+}
+
+func (s *Session) DecreaseSprintDuration() {
+	s.data.SprintDuration -= 1
+}
+
+func (s *Session) ClearChannel() {
+	close(s.ActionsChannel)
+	s.ActionsChannel = nil
+}
+
+func (s *Session) HasSprintEndTimePassed() bool {
+	if s.endNextSprintTimestamp == nil {
+		log.Println("[PROBLEM] s.endNextSprintTimestamp IS nil.")
+		return false
+	}
+
+	return time.Now().Local().After(*s.endNextSprintTimestamp)
+}
+
+func (s *Session) HasRestEndTimePassed() bool {
+	if s.endNextRestTimestamp == nil {
+		log.Println("[PROBLEM] s.endNextRestTimestamp IS nil.")
+		return false
+	}
+
+	return time.Now().Local().After(*s.endNextRestTimestamp)
 }

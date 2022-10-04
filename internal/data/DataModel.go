@@ -110,30 +110,31 @@ func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId
 	settings.SessionDefault = session
 }
 
-func GetUserSessionFromSettings(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) *domain.Session {
+func GetUserSessionFromSettings(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) domain.SessionInitData {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	session := &appState.UsersSettings[chatId].SessionDefault
-	session.Data.IsPaused = true
-	return session
+	// session.Data.IsPaused = true
+
+	sData := session.ToInitData()
+	sData.IsPaused = true
+
+	return sData // this instantiates a new session object
 }
 
 func GetNewUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) *domain.Session {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
-
 	sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
-	sessionRunning := appState.UsersSettings[chatId].SessionRunning
-	sessionRunning.PomodoroDurationSet = sessionDef.PomodoroDurationSet
-	sessionRunning.SprintDurationSet = sessionDef.SprintDurationSet
-	sessionRunning.RestDurationSet = sessionDef.RestDurationSet
+	sessionDef.PomodoroDuration = sessionDef.PomodoroDurationSet
+	sessionDef.SprintDuration = sessionDef.SprintDurationSet
+	sessionDef.RestDuration = sessionDef.RestDurationSet
+	sessionDef.IsPaused = true
 
-	sessionRunning.Data.PomodoroDuration = sessionDef.PomodoroDurationSet
-	sessionRunning.Data.SprintDuration = sessionDef.SprintDurationSet
-	sessionRunning.Data.RestDuration = sessionDef.RestDurationSet
-	sessionRunning.Data.IsPaused = true
+	sessionRunning := sessionDef.ToSession().InitChannel()
+
+	appState.UsersSettings[chatId].SessionRunning = sessionRunning
 
 	return sessionRunning
 }
@@ -144,21 +145,31 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 	var sessionRunning *domain.Session
 
 	if appState.UsersSettings[chatId].SessionRunning == nil {
-		appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
-
 		sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
-		sessionRunning = appState.UsersSettings[chatId].SessionRunning
+		sessionDef.PomodoroDuration = sessionDef.PomodoroDurationSet
+		sessionDef.SprintDuration = sessionDef.SprintDurationSet
+		sessionDef.RestDuration = sessionDef.RestDurationSet
 
-		sessionRunning.PomodoroDurationSet = sessionDef.PomodoroDurationSet
-		sessionRunning.SprintDurationSet = sessionDef.SprintDurationSet
-		sessionRunning.RestDurationSet = sessionDef.RestDurationSet
+		sessionDef.IsPaused = true
 
-		sessionRunning.Data.PomodoroDuration = sessionDef.PomodoroDurationSet
-		sessionRunning.Data.SprintDuration = sessionDef.SprintDurationSet
-		sessionRunning.Data.RestDuration = sessionDef.RestDurationSet
+		sessionRunning = sessionDef.ToSession().InitChannel()
 
-		sessionRunning.Data.IsPaused = true
+		appState.UsersSettings[chatId].SessionRunning = sessionRunning
+		/*
+			appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
+
+			sessionRunning = appState.UsersSettings[chatId].SessionRunning
+
+			sessionRunning.pomodoroDurationSet = sessionDef.pomodoroDurationSet
+			sessionRunning.sprintDurationSet = sessionDef.sprintDurationSet
+			sessionRunning.restDurationSet = sessionDef.restDurationSet
+
+			sessionRunning.Data.PomodoroDuration = sessionDef.pomodoroDurationSet
+			sessionRunning.Data.SprintDuration = sessionDef.sprintDurationSet
+			sessionRunning.Data.RestDuration = sessionDef.restDurationSet
+
+			sessionRunning.Data.IsPaused = true*/
 	} else {
 		sessionRunning = appState.UsersSettings[chatId].SessionRunning
 

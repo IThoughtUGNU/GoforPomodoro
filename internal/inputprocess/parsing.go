@@ -40,42 +40,47 @@ func ParsePatternToSession(r *regexp.Regexp, text string) *domain.Session {
 	}
 	matches := r.FindAllStringSubmatch(text, -1)
 
-	var session *domain.Session
+	var sessionInitData domain.SessionInitData
 
+	match := false
 	for _, v := range matches {
-		if session == nil {
-			session = new(domain.Session).InitChannel()
-			session.SprintDurationSet = 1
-			session.Data.SprintDuration = 1
-			session.Data.IsPaused = true
-		}
+		match = true
+
+		sessionInitData.SprintDurationSet = 1
+		sessionInitData.SprintDuration = 1
+		sessionInitData.IsPaused = true
 
 		// Mandatory parameter for this command.
 		pomDuration, err := strconv.Atoi(v[MinutesGroup])
 		if err != nil {
 			return nil
 		}
-		session.PomodoroDurationSet = pomDuration * 60 // time from minutes to seconds.
-		session.Data.PomodoroDuration = session.PomodoroDurationSet
+		sessionInitData.PomodoroDurationSet = domain.PomodoroDuration(pomDuration * 60) // time from minutes to seconds.
+		sessionInitData.PomodoroDuration = sessionInitData.PomodoroDurationSet
 
 		// Other parameters are optional
 		sprintDuration, err := strconv.Atoi(v[CardinalityGroup])
 		if err == nil {
-			session.SprintDurationSet = sprintDuration
-			session.Data.SprintDuration = session.SprintDurationSet
+			sessionInitData.SprintDurationSet = domain.SprintDuration(sprintDuration)
+			sessionInitData.SprintDuration = sessionInitData.SprintDurationSet
 
 			// Default 5 minutes of rest duration in case user did not specify.
-			session.RestDurationSet = 5 * 60
-			session.Data.RestDuration = session.RestDurationSet
+			sessionInitData.RestDurationSet = 5 * 60
+			sessionInitData.RestDuration = sessionInitData.RestDurationSet
 		}
 
 		restDuration, err := strconv.Atoi(v[RestGroup])
 		if err == nil {
-			session.RestDurationSet = restDuration * 60
-			session.Data.RestDuration = session.RestDurationSet
+			sessionInitData.RestDurationSet = domain.RestDuration(restDuration * 60)
+			sessionInitData.RestDuration = sessionInitData.RestDurationSet
 		}
 
 		break
 	}
-	return session
+
+	if !match {
+		return nil
+	}
+
+	return sessionInitData.ToSession().InitChannel()
 }

@@ -36,12 +36,8 @@ func StartSession(
 	// 2. set a timer of PomodoroDuration minutes
 	// 3. at its end, set a timer of PomodoroDuration seconds
 	// 4. at its end, check if Sprint duration is >0. If so, go to 1, otherwise isPaused.
-	currentSession.Data.IsPaused = false
-	currentSession.Data.IsCancel = false
 
-	currentSession.Data.SprintDuration -= 1
-
-	currentSession.AssignTimestamps()
+	currentSession.Start()
 
 	go SpawnSessionTimer(
 		userId,
@@ -62,7 +58,6 @@ func SpawnSessionTimer(
 	endSessionHandler func(id domain.ChatID, session *domain.Session, endKind PomodoroEndKind),
 	pauseSessionHandler func(id domain.ChatID, session *domain.Session),
 ) {
-	sData := &currentSession.Data
 mainLoop:
 	for {
 		select {
@@ -71,33 +66,26 @@ mainLoop:
 				// The event was internal (rest started/finished)
 				if action.RestStarted || action.RestFinished {
 					if action.RestStarted {
-						sData.IsRest = true
-						sData.RestDuration = currentSession.RestDurationSet
+						currentSession.RestStarted()
 						restBeginHandler(userId, currentSession)
 					}
 					if action.RestFinished {
-						sData.IsRest = false
-						sData.PomodoroDuration = currentSession.PomodoroDurationSet
+						currentSession.RestFinished()
 						restFinishedHandler(userId, currentSession)
 					}
-					currentSession.AssignTimestamps()
 					continue mainLoop
 				}
 
 				// The event was either external (paused/canceled) or internal (finished)
 				if action.Paused || action.Canceled || action.Finished {
 					if action.Paused {
-						// Cache pomodoro and rest duration. We will use them again to assign new timestamps.
-						sData.PomodoroDuration = currentSession.GetPomodoroDuration()
-						sData.RestDuration = currentSession.GetRestDuration()
-
-						sData.IsPaused = true
+						currentSession.Pause()
 						pauseSessionHandler(userId, currentSession)
 					} else if action.Canceled {
-						sData.IsCancel = true
+						currentSession.Cancel()
 						endSessionHandler(userId, currentSession, PomodoroCanceled)
 					} else if action.Finished {
-						sData.IsFinished = true
+						currentSession.SetFinished()
 						endSessionHandler(userId, currentSession, PomodoroFinished)
 					}
 					break mainLoop
@@ -110,12 +98,12 @@ mainLoop:
 		default:
 			time.Sleep(1 * time.Second)
 
-			isRest := currentSession.Data.IsRest
+			isRest := currentSession.IsRest()
 
-			if !isRest && time.Now().Local().After(*currentSession.EndNextSprintTimestamp) {
-				currentSession.Data.SprintDuration -= 1
+			if !isRest && currentSession.HasSprintEndTimePassed() {
+				currentSession.DecreaseSprintDuration()
 
-				if currentSession.Data.SprintDuration < 0 {
+				if currentSession.GetSprintDuration() < 0 {
 					currentSession.WritingActionChannel() <- domain.DispatchAction{Finished: true}
 					continue mainLoop
 				}
@@ -123,21 +111,18 @@ mainLoop:
 				// if SprintDuration still >= 0, we have rest now
 				currentSession.WritingActionChannel() <- domain.DispatchAction{RestStarted: true}
 				continue mainLoop
-			} else if isRest && time.Now().Local().After(*currentSession.EndNextRestTimestamp) {
+			} else if isRest && currentSession.HasRestEndTimePassed() {
 
 				currentSession.WritingActionChannel() <- domain.DispatchAction{RestFinished: true}
 				continue mainLoop
 			}
 		}
 	}
-	defer func() {
-		close(currentSession.ActionsChannel)
-		currentSession.ActionsChannel = nil
-	}()
+	defer currentSession.ClearChannel()
 }
 
 func PauseSession(currentSession *domain.Session) error {
-	if currentSession.Data.IsPaused {
+	if currentSession.IsPaused() {
 		return errors.New("sessionDefault already paused")
 	}
 
@@ -172,9 +157,7 @@ func ResumeSession(
 		return errors.New("session was canceled")
 	}
 
-	currentSession.Data.IsPaused = false
-
-	currentSession.AssignTimestamps()
+	currentSession.Resume()
 
 	go SpawnSessionTimer(
 		userId,

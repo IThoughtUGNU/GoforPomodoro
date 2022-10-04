@@ -125,10 +125,10 @@ func (c *Communicator) ReplyWithAndHourglassAndNotify(text string) {
 
 func (c *Communicator) SessionStarted(session *domain.Session, err error) {
 	if err == nil {
-		numberOfSprints := session.GetSprintDurationSet()
-		sessionTime := session.GetPomodoroDurationSet() * numberOfSprints
+		numberOfSprints := session.GetSprintDurationSet().ToInt()
+		sessionTime := session.GetPomodoroDurationSet().Seconds() * numberOfSprints
 		if numberOfSprints > 1 {
-			sessionTime += session.GetRestDurationSet() * (numberOfSprints - 1)
+			sessionTime += session.GetRestDurationSet().Seconds() * (numberOfSprints - 1)
 		}
 		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", utils.NiceTimeFormatting(sessionTime))
 		c.ReplyWithAndHourglassAndNotify(replyStr)
@@ -166,7 +166,7 @@ func (c *Communicator) SessionPausedHandler(id domain.ChatID, session *domain.Se
 func (c *Communicator) RestFinishedHandler(id domain.ChatID, session *domain.Session) {
 	text := fmt.Sprintf(
 		"Pomodoro %s started.",
-		utils.NiceTimeFormatting(session.GetPomodoroDurationSet()),
+		utils.NiceTimeFormatting(session.GetPomodoroDurationSet().Seconds()),
 	)
 	c.ReplyWithAndHourglassAndNotify(text)
 }
@@ -174,7 +174,7 @@ func (c *Communicator) RestFinishedHandler(id domain.ChatID, session *domain.Ses
 func (c *Communicator) RestBeginHandler(id domain.ChatID, session *domain.Session) {
 	text := fmt.Sprintf(
 		"Pomodoro done! Have rest for %s now.",
-		utils.NiceTimeFormatting(session.GetRestDurationSet()),
+		utils.NiceTimeFormatting(session.GetRestDurationSet().Seconds()),
 	)
 
 	c.ReplyAndNotify(text)
