@@ -26,17 +26,6 @@ func StartSession(
 		return errors.New("the session is effectively nil")
 	}
 
-	// How a sessionDefault is defined:
-	// SprintDuration   int
-	// PomodoroDuration int
-	// RestDuration     int
-
-	// We want
-	// 1. Decrease Sprint duration by 1
-	// 2. set a timer of PomodoroDuration minutes
-	// 3. at its end, set a timer of PomodoroDuration seconds
-	// 4. at its end, check if Sprint duration is >0. If so, go to 1, otherwise isPaused.
-
 	currentSession.Start()
 
 	go SpawnSessionTimer(
