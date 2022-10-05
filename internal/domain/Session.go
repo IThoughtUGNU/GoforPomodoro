@@ -87,6 +87,11 @@ func (sid SessionInitData) ToSession() (s *Session) {
 	s.data.PomodoroDuration = sid.PomodoroDuration
 	s.data.RestDuration = sid.RestDuration
 
+	s.data.IsCancel = sid.IsCancel
+	s.data.IsPaused = sid.IsPaused
+	s.data.IsRest = sid.IsRest
+	s.data.IsFinished = sid.IsFinished
+
 	return
 }
 
@@ -98,6 +103,11 @@ func (s *Session) ToInitData() (sid SessionInitData) {
 	sid.SprintDuration = s.data.SprintDuration
 	sid.PomodoroDuration = s.data.PomodoroDuration
 	sid.RestDuration = s.data.RestDuration
+
+	sid.IsPaused = s.data.IsPaused
+	sid.IsRest = s.data.IsRest
+	sid.IsFinished = s.data.IsFinished
+	sid.IsCancel = s.data.IsCancel
 
 	return
 }

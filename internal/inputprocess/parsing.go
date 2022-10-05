@@ -82,5 +82,5 @@ func ParsePatternToSession(r *regexp.Regexp, text string) *domain.Session {
 		return nil
 	}
 
-	return sessionInitData.ToSession().InitChannel()
+	return sessionInitData.ToSession()
 }
