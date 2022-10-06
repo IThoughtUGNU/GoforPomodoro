@@ -80,7 +80,7 @@ re-distributions, the AGPL license is the fittest license.
 
 - Go (1.19, need Generics to work)
 - [go-telegram-bot-api](https://github.com/go-telegram-bot-api/telegram-bot-api)
-- SQLite ([driver](modernc.org/sqlite))
+- SQLite ([driver](https://modernc.org/sqlite))
 - not very much else
 
 ### Why SQLite?
