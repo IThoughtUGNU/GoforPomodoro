@@ -2,3 +2,4 @@ appsettings.toml
 .idea/
 Pomodorogram.iml
 GoforPomodoro
+*.db
