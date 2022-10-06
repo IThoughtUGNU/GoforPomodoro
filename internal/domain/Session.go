@@ -70,6 +70,9 @@ type SessionInitData struct {
 	PomodoroDuration
 	RestDuration
 
+	EndNextSprintTimestamp time.Time
+	EndNextRestTimestamp   time.Time
+
 	IsRest     bool
 	IsPaused   bool
 	IsCancel   bool
@@ -91,6 +94,13 @@ func (sid SessionInitData) ToSession() (s *Session) {
 	s.data.IsPaused = sid.IsPaused
 	s.data.IsRest = sid.IsRest
 	s.data.IsFinished = sid.IsFinished
+
+	if !sid.EndNextRestTimestamp.IsZero() {
+		s.endNextRestTimestamp = &sid.EndNextRestTimestamp
+	}
+	if !sid.EndNextSprintTimestamp.IsZero() {
+		s.endNextSprintTimestamp = &sid.EndNextSprintTimestamp
+	}
 
 	return
 }
@@ -522,4 +532,12 @@ func (s *Session) HasRestEndTimePassed() bool {
 	}
 
 	return time.Now().Local().After(*s.endNextRestTimestamp)
+}
+
+func (s *Session) EndNextSprintTimestamp() *time.Time {
+	return s.endNextSprintTimestamp
+}
+
+func (s *Session) EndNextRestTimestamp() *time.Time {
+	return s.endNextRestTimestamp
 }

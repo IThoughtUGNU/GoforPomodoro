@@ -14,6 +14,7 @@ func ActionResumeSprint(update tgbotapi.Update, appState *domain.AppState, commu
 	session := data.GetUserSessionRunning(appState, chatId, senderId)
 	communicator.SessionResumed(
 		sessionmanager.ResumeSession(
+			appState,
 			chatId,
 			session,
 			communicator.RestBeginHandler,
@@ -40,6 +41,7 @@ func ActionStartSprint(update tgbotapi.Update, appState *domain.AppState, commun
 	communicator.SessionStarted(
 		session,
 		sessionmanager.StartSession(
+			appState,
 			chatId,
 			session,
 			communicator.RestBeginHandler,

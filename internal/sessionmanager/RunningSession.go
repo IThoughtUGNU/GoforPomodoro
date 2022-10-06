@@ -1,6 +1,7 @@
 package sessionmanager
 
 import (
+	"GoforPomodoro/internal/data"
 	"GoforPomodoro/internal/domain"
 	"errors"
 	"log"
@@ -15,6 +16,7 @@ const (
 )
 
 func StartSession(
+	appState *domain.AppState,
 	userId domain.ChatID,
 	currentSession *domain.Session,
 	restBeginHandler func(id domain.ChatID, session *domain.Session),
@@ -29,6 +31,7 @@ func StartSession(
 	currentSession.Start()
 
 	go SpawnSessionTimer(
+		appState,
 		userId,
 		currentSession,
 		restBeginHandler,
@@ -40,13 +43,16 @@ func StartSession(
 }
 
 func SpawnSessionTimer(
-	userId domain.ChatID,
+	appState *domain.AppState,
+	chatId domain.ChatID,
 	currentSession *domain.Session,
 	restBeginHandler func(id domain.ChatID, session *domain.Session),
 	restFinishedHandler func(id domain.ChatID, session *domain.Session),
 	endSessionHandler func(id domain.ChatID, session *domain.Session, endKind PomodoroEndKind),
 	pauseSessionHandler func(id domain.ChatID, session *domain.Session),
 ) {
+	// We update session running because it started (or resumed)
+	data.UpdateUserSessionRunning(appState, chatId)
 mainLoop:
 	for {
 		select {
@@ -56,12 +62,15 @@ mainLoop:
 				if action.RestStarted || action.RestFinished {
 					if action.RestStarted {
 						currentSession.RestStarted()
-						restBeginHandler(userId, currentSession)
+						restBeginHandler(chatId, currentSession)
 					}
 					if action.RestFinished {
 						currentSession.RestFinished()
-						restFinishedHandler(userId, currentSession)
+						restFinishedHandler(chatId, currentSession)
 					}
+					// We update session running because it changed state
+					// (rest started or finished)
+					data.UpdateUserSessionRunning(appState, chatId)
 					continue mainLoop
 				}
 
@@ -69,14 +78,17 @@ mainLoop:
 				if action.Paused || action.Canceled || action.Finished {
 					if action.Paused {
 						currentSession.Pause()
-						pauseSessionHandler(userId, currentSession)
+						pauseSessionHandler(chatId, currentSession)
 					} else if action.Canceled {
 						currentSession.Cancel()
-						endSessionHandler(userId, currentSession, PomodoroCanceled)
+						endSessionHandler(chatId, currentSession, PomodoroCanceled)
 					} else if action.Finished {
 						currentSession.SetFinished()
-						endSessionHandler(userId, currentSession, PomodoroFinished)
+						endSessionHandler(chatId, currentSession, PomodoroFinished)
 					}
+					// We update session running because it changed state
+					// (paused, canceled or finished)
+					data.UpdateUserSessionRunning(appState, chatId)
 					break mainLoop
 				}
 			} else {
@@ -129,6 +141,7 @@ func CancelSession(currentSession *domain.Session) error {
 }
 
 func ResumeSession(
+	appState *domain.AppState,
 	userId domain.ChatID,
 	currentSession *domain.Session,
 	restBeginHandler func(id domain.ChatID, session *domain.Session),
@@ -149,6 +162,7 @@ func ResumeSession(
 	currentSession.Resume()
 
 	go SpawnSessionTimer(
+		appState,
 		userId,
 		currentSession,
 		restBeginHandler,

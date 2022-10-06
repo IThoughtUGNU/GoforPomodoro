@@ -1,6 +1,7 @@
 package data
 
 import (
+	"GoforPomodoro/internal/data/persistence"
 	"GoforPomodoro/internal/domain"
 	"GoforPomodoro/internal/utils"
 	"github.com/BurntSushi/toml"
@@ -14,34 +15,64 @@ func LoadAppSettings() (*domain.AppSettings, error) {
 	return settings, err
 }
 
-func LoadAppState() (*domain.AppState, error) {
+func LoadAppState(persistenceManager persistence.Manager) (*domain.AppState, error) {
 	// temporary
 	appState := new(domain.AppState)
+
+	appState.PersistenceManager = persistenceManager
+
+	appState.UsersSettingsLock.Lock()
 	appState.UsersSettings = make(map[domain.ChatID]*domain.Settings)
+	appState.UsersSettingsLock.Unlock()
 	return appState, nil
 }
 
 func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID) {
+	appState.UsersSettingsLock.Lock()
 	if appState.UsersSettings[chatId] == nil {
-		chatSettings := new(domain.Settings)
-		chatSettings.Autorun = true
-		appState.UsersSettings[chatId] = chatSettings
+		// Check if there is in the database, otherwise we create new settings in-place
+		if appState.PersistenceManager == nil {
+			chatSettings := new(domain.Settings)
+			chatSettings.Autorun = true
+			appState.UsersSettings[chatId] = chatSettings
+		} else {
+			chatSettings, err := appState.PersistenceManager.GetChatSettings(chatId)
+
+			if err != nil {
+				chatSettings := new(domain.Settings)
+				chatSettings.Autorun = true
+				appState.UsersSettings[chatId] = chatSettings
+			} else { // err == nil
+
+				// Load settings
+				appState.UsersSettings[chatId] = chatSettings
+			}
+		}
 	}
+	appState.UsersSettingsLock.Unlock()
 }
 
 func AdjustChatType(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, isGroup bool) {
 	defaultUserSettingsIfNeeded(appState, chatId)
+	appState.UsersSettingsLock.Lock()
 	appState.UsersSettings[chatId].IsGroup = isGroup
+	appState.UsersSettingsLock.Unlock()
 }
 
 func IsGroup(appState *domain.AppState, chatId domain.ChatID) bool {
 	defaultUserSettingsIfNeeded(appState, chatId)
+
+	appState.UsersSettingsLock.RLock()
+	defer appState.UsersSettingsLock.RUnlock()
 
 	return appState.UsersSettings[chatId].IsGroup
 }
 
 func GetSubscribers(appState *domain.AppState, chatId domain.ChatID) []domain.ChatID {
 	defaultUserSettingsIfNeeded(appState, chatId)
+
+	appState.UsersSettingsLock.RLock()
+	defer appState.UsersSettingsLock.RUnlock()
 
 	return appState.UsersSettings[chatId].Subscribers
 }
@@ -53,7 +84,10 @@ func SubscribeUserInGroup(appState *domain.AppState, chatId domain.ChatID, sende
 		return domain.SubscriptionError{}
 	}
 
+	appState.UsersSettingsLock.RLock()
 	settings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
+
 	subscribers := (*settings).Subscribers
 	if !utils.Contains(subscribers, senderId) {
 		(*settings).Subscribers = append(subscribers, senderId)
@@ -70,7 +104,10 @@ func UnsubscribeUser(appState *domain.AppState, chatId domain.ChatID, senderId d
 		return domain.SubscriptionError{}
 	}
 
+	appState.UsersSettingsLock.RLock()
 	settings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
+
 	subscribers := (*settings).Subscribers
 	if utils.Contains(subscribers, senderId) {
 		newS, err := utils.AfterRemoveEl(subscribers, senderId)
@@ -87,33 +124,76 @@ func UnsubscribeUser(appState *domain.AppState, chatId domain.ChatID, senderId d
 }
 
 func CleanUserSettings(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) {
-	appState.UsersSettings[chatId] = nil // new(Settings)
+	appState.UsersSettingsLock.Lock()
+	appState.UsersSettings[chatId] = nil
+	appState.UsersSettingsLock.Unlock()
+
+	err := appState.PersistenceManager.DeleteChatSettings(chatId)
+	if err != nil {
+		log.Printf("[DataModel::CleanUserSettings] error in deleting. (%v)\n", err.Error())
+	}
 	defaultUserSettingsIfNeeded(appState, chatId)
 }
 
 func SetUserAutorun(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, autorun bool) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettings[chatId].Autorun = autorun
+	appState.UsersSettingsLock.RLock()
+	chatSettings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
+
+	chatSettings.Autorun = autorun
+
+	err := appState.PersistenceManager.StoreChatSettings(chatId, chatSettings)
+	if err != nil {
+		log.Printf("[DataModel::SetUserAutorun] error in storing. (%v)\n", err.Error())
+	}
 }
 
 func GetUserAutorun(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) bool {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
+	appState.UsersSettingsLock.RLock()
+	defer appState.UsersSettingsLock.RUnlock()
+
 	return appState.UsersSettings[chatId].Autorun
+}
+
+func UpdateUserSessionRunning(appState *domain.AppState, chatId domain.ChatID) {
+
+	appState.UsersSettingsLock.RLock()
+	settings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
+
+	go func() {
+		err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
+		if err != nil {
+			log.Printf("[DataModel::UpdateUserSessionRunning] error in storing. (%v)\n", err.Error())
+		}
+	}()
 }
 
 func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, session domain.Session) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
+	appState.UsersSettingsLock.RLock()
 	settings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
+
 	settings.SessionDefault = session
+
+	err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
+	if err != nil {
+		log.Printf("[DataModel::UpdateUserSession] error in storing. (%v)\n", err.Error())
+	}
 }
 
 func GetUserSessionFromSettings(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) domain.SessionInitData {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
+	appState.UsersSettingsLock.RLock()
 	session := &appState.UsersSettings[chatId].SessionDefault
+	appState.UsersSettingsLock.RUnlock()
 	// session.Data.IsPaused = true
 
 	sData := session.ToInitData()
@@ -134,13 +214,20 @@ func GetNewUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, s
 
 	sessionRunning := sessionDef.ToSession().InitChannel()
 
-	appState.UsersSettings[chatId].SessionRunning = sessionRunning
+	appState.UsersSettingsLock.RLock()
+	settings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
+
+	settings.SessionRunning = sessionRunning
 
 	return sessionRunning
 }
 
 func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) *domain.Session {
 	defaultUserSettingsIfNeeded(appState, chatId)
+
+	appState.UsersSettingsLock.RLock()
+	defer appState.UsersSettingsLock.RUnlock()
 
 	var sessionRunning *domain.Session
 

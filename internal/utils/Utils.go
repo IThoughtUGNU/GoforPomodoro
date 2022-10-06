@@ -84,3 +84,8 @@ func AfterRemoveEl[T comparable](s []T, el T) ([]T, error) {
 func TimePtr(t time.Time) *time.Time {
 	return &t
 }
+
+type Pair[T, U any] struct {
+	First  T
+	Second U
+}
