@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"log"
 	_ "modernc.org/sqlite"
+	"os"
 	"sync"
 	"time"
 )
@@ -33,6 +34,11 @@ var _ Manager = &SqliteManager{}
 // var _ Manager = SqliteManager{}
 
 func (m *SqliteManager) OpenDatabase(dataSourceName string) error {
+	if _, err := os.Stat(dataSourceName); err != nil {
+		// file does not exist or is not available.
+		return err
+	}
+
 	db, err := sql.Open("sqlite", dataSourceName)
 
 	if err != nil {
