@@ -30,7 +30,7 @@ type PersistenceManager interface {
 }
 
 type AppState struct {
-	PersistenceManager
+	PersistenceManager PersistenceManager
 
 	UsersSettings     map[ChatID]*Settings
 	UsersSettingsLock sync.RWMutex

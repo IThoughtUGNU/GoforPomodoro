@@ -24,9 +24,6 @@ type SqliteManager struct {
 	// upsertChatSettingsItem all parameters (chat_id, ...)
 	upsertChatSettingsItem *sql.Stmt
 
-	// updateChatSettingsItem all parameters (..., chat_id)
-	//updateChatSettingsItem *sql.Stmt
-
 	// deleteChatSettingsItem 1 parameter (chat_id)
 	deleteChatSettingsItem *sql.Stmt
 }
