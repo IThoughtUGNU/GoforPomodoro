@@ -15,7 +15,7 @@ configurations that can be used by the users as a Telegram bot.
 
 #### How to find and use
 
-You can find it on [this link](t.me/go4pom_bot). Type `/help` to learn how
+You can find it on [this link](https://t.me/go4pom_bot). Type `/help` to learn how
 the bot is used.
 
 * `/30` will run a single Pomodoro of 30 minutes.
@@ -29,12 +29,12 @@ To set a different rest time, the query is modified like
 
 * `/25for4rest7` (now the rest time among sprints will be of 7 minutes).
 
-By default setting a configuration will trigger the timer to start. You can
+By default, setting a configuration will trigger the timer to start. You can
 modify this behavior by typing
 
 `/autorun off`
 
-In that case, the Pomdoro is started doing `/start_sprint` or just `/s`.
+In that case, the Pomodoro is started doing `/start_sprint` or just `/s`.
 
 You can cancel a session with `/cancel` command (will make it unrestorable)
 or you can temporarily `/pause` it and `/resume` it in another moment.
@@ -44,7 +44,7 @@ You can reset all the configuration associated with your chat with `/reset`.
 
 #### Commands' groups
 
-This bot also works in groups. In groups you have a further pair of commands
+This bot also works in groups. In groups, you have another pair of commands
 that are possible useful, and they are
 
 * `/join`
