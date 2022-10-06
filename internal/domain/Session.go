@@ -424,6 +424,10 @@ func (s *Session) Pause() {
 	s.data.PomodoroDuration = s.GetPomodoroDuration()
 	s.data.RestDuration = s.GetRestDuration()
 
+	// Nil the timestamps (they have to be re-calculated)
+	s.endNextSprintTimestamp = nil
+	s.endNextRestTimestamp = nil
+
 	s.data.IsPaused = true
 }
 

@@ -8,6 +8,21 @@ import (
 	"log"
 )
 
+func PreloadUsersSettings(
+	appState *domain.AppState,
+	pairs []utils.Pair[domain.ChatID, *domain.Settings],
+) {
+	appState.UsersSettingsLock.Lock()
+	defer appState.UsersSettingsLock.Unlock()
+
+	for _, pair := range pairs {
+		chatId := pair.First
+		settings := pair.Second
+
+		appState.UsersSettings[chatId] = settings
+	}
+}
+
 func LoadAppSettings() (*domain.AppSettings, error) {
 	settings := new(domain.AppSettings)
 	_, err := toml.DecodeFile("appsettings.toml", settings)
@@ -22,13 +37,16 @@ func LoadAppState(persistenceManager persistence.Manager) (*domain.AppState, err
 	appState.PersistenceManager = persistenceManager
 
 	appState.UsersSettingsLock.Lock()
+	defer appState.UsersSettingsLock.Unlock()
 	appState.UsersSettings = make(map[domain.ChatID]*domain.Settings)
-	appState.UsersSettingsLock.Unlock()
+
 	return appState, nil
 }
 
 func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID) {
 	appState.UsersSettingsLock.Lock()
+	defer appState.UsersSettingsLock.Unlock()
+
 	if appState.UsersSettings[chatId] == nil {
 		// Check if there is in the database, otherwise we create new settings in-place
 		if appState.PersistenceManager == nil {
@@ -49,7 +67,6 @@ func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID
 			}
 		}
 	}
-	appState.UsersSettingsLock.Unlock()
 }
 
 func AdjustChatType(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, isGroup bool) {
@@ -165,10 +182,13 @@ func UpdateUserSessionRunning(appState *domain.AppState, chatId domain.ChatID) {
 	settings := appState.UsersSettings[chatId]
 	appState.UsersSettingsLock.RUnlock()
 
+	// TODO: Dispatch this call to a goroutine using a channel instead of spawning a go-func
 	go func() {
-		err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
-		if err != nil {
-			log.Printf("[DataModel::UpdateUserSessionRunning] error in storing. (%v)\n", err.Error())
+		if appState.PersistenceManager != nil {
+			err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
+			if err != nil {
+				log.Printf("[DataModel::UpdateUserSessionRunning] error in storing. (%v)\n", err.Error())
+			}
 		}
 	}()
 }
@@ -177,14 +197,18 @@ func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	appState.UsersSettingsLock.RLock()
+	defer appState.UsersSettingsLock.RUnlock()
+
 	settings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
 
 	settings.SessionDefault = session
 
-	err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
-	if err != nil {
-		log.Printf("[DataModel::UpdateUserSession] error in storing. (%v)\n", err.Error())
+	if appState.PersistenceManager != nil {
+
+		err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
+		if err != nil {
+			log.Printf("[DataModel::UpdateUserSession] error in storing. (%v)\n", err.Error())
+		}
 	}
 }
 
