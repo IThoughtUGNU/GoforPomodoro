@@ -51,14 +51,18 @@ func ActionStartSprint(
 	communicator *Communicator,
 ) {
 
+	// log.Printf("[NO-DB TEST] ActionStartSprint!!\n")
 	session := data.GetUserSessionRunning(appState, chatId, senderId)
 
+	// log.Printf("[NO-DB TEST] data.GetUserSessionRunning succeded\n")
 	if !session.IsStopped() {
 		communicator.SessionAlreadyRunning()
+		// log.Printf("[NO-DB TEST] session already running: stopping\n")
 		return
 	}
 	session = data.GetNewUserSessionRunning(appState, chatId, senderId)
 
+	// log.Printf("[NO-DB TEST] new session running: %v\n", session)
 	communicator.SessionStarted(
 		session,
 		sessionmanager.StartSession(

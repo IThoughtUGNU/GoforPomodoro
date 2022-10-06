@@ -250,14 +250,20 @@ func GetNewUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, s
 }
 
 func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) *domain.Session {
+
+	// log.Printf("[NO-DB TEST] about to defaultUserSettingsIfNeeded\n")
 	defaultUserSettingsIfNeeded(appState, chatId)
 
+	// log.Printf("[NO-DB TEST] defaultUserSettingsIfNeeded done\n")
 	appState.UsersSettingsLock.RLock()
-	defer appState.UsersSettingsLock.RUnlock()
+	// log.Printf("[NO-DB TEST] RLock acquired\n")
 
-	var sessionRunning *domain.Session
+	sessionRunning := appState.UsersSettings[chatId].SessionRunning
+	appState.UsersSettingsLock.RUnlock()
 
-	if appState.UsersSettings[chatId].SessionRunning == nil {
+	// var sessionRunning *domain.Session
+
+	if sessionRunning == nil {
 		sessionDef := GetUserSessionFromSettings(appState, chatId, senderId)
 
 		sessionDef.PomodoroDuration = sessionDef.PomodoroDurationSet
@@ -268,7 +274,9 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 
 		sessionRunning = sessionDef.ToSession().InitChannel()
 
+		appState.UsersSettingsLock.RLock()
 		appState.UsersSettings[chatId].SessionRunning = sessionRunning
+		appState.UsersSettingsLock.RUnlock()
 		/*
 			appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
 
@@ -284,7 +292,9 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 
 			sessionRunning.Data.IsPaused = true*/
 	} else {
+		appState.UsersSettingsLock.RLock()
 		sessionRunning = appState.UsersSettings[chatId].SessionRunning
+		appState.UsersSettingsLock.RUnlock()
 
 		if sessionRunning.ActionsChannel == nil {
 			sessionRunning = sessionRunning.InitChannel()

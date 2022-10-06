@@ -139,13 +139,18 @@ func CommandMenuLoop(
 			default:
 				newSession := inputprocess.ParsePatternToSession(nil, msgText)
 
+				// log.Printf("[NO-DB TEST] session: %v\n", newSession)
+
 				if newSession != nil {
 					data.UpdateUserSession(appState, chatId, senderId, *newSession)
+					// log.Printf("[NO-DB TEST] session updated\n")
 					communicator.NewSession(*newSession)
 
 					autorun := data.GetUserAutorun(appState, chatId, senderId)
+					// log.Printf("[NO-DB TEST] autorun: %v\n", autorun)
 					if autorun {
 						ActionStartSprint(senderId, chatId, appState, communicator)
+						// log.Printf("[NO-DB TEST] session started\n")
 					}
 				}
 			}
