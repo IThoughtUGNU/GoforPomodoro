@@ -27,5 +27,5 @@ type Manager interface {
 	StoreChatSettings(id domain.ChatID, settings *domain.Settings) error
 	DeleteChatSettings(id domain.ChatID) error
 
-	GetActiveChatSettings() []utils.Pair[domain.ChatID, *domain.Settings]
+	GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *domain.Settings], error)
 }

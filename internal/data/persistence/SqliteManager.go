@@ -7,14 +7,19 @@ import (
 	"encoding/json"
 	"log"
 	_ "modernc.org/sqlite"
+	"sync"
 	"time"
 )
 
 type SqliteManager struct {
 	db *sql.DB
 
+	dbLock sync.RWMutex
+
 	// getChatSettingsItem 1 parameter (chat_id)
 	getChatSettingsItem *sql.Stmt
+
+	getActiveChatsSettings *sql.Stmt
 
 	// upsertChatSettingsItem all parameters (chat_id, ...)
 	upsertChatSettingsItem *sql.Stmt
@@ -54,6 +59,11 @@ func (m *SqliteManager) InitializePreparedStatements() {
 		log.Printf("[SQLITE MANAGER] ERROR IN PREPARING STATEMENTS (SELECT)! (%s)\n", err.Error())
 		panic(err)
 	}
+
+	m.getActiveChatsSettings, err = m.db.Prepare(`
+		SELECT *
+		FROM chat_settings
+		WHERE active = true`)
 
 	m.upsertChatSettingsItem, err = m.db.Prepare(`
 		INSERT INTO chat_settings 
@@ -142,11 +152,14 @@ func (m *SqliteManager) InitializePreparedStatements() {
 	}
 }
 
-func (m *SqliteManager) GetChatSettings(chatId domain.ChatID) (*domain.Settings, error) {
-	row := m.getChatSettingsItem.QueryRow(chatId)
+type Scannable interface {
+	Err() error
+	Scan(dest ...any) error
+}
 
+func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*domain.Settings, error) {
 	if row.Err() != nil {
-		log.Printf("[SqliteManager] ERROR AT RETRIEVING CHAT ID (%v)\n", chatId)
+		log.Printf("[SqliteManager] ERROR AT RETRIEVING CHAT ID (%v), error: %v\n", chatId, row.Err())
 		return nil, row.Err()
 	}
 
@@ -203,6 +216,12 @@ func (m *SqliteManager) GetChatSettings(chatId domain.ChatID) (*domain.Settings,
 		&active,
 	)
 
+	if *chatId == 0 {
+		*chatId = _chatId
+	} else if *chatId != _chatId {
+		log.Println("[SqliteManager] This condition should have never happened.")
+	}
+
 	if endNextSprintTimestamp != nil {
 		runningS.EndNextSprintTimestamp = *endNextSprintTimestamp
 	}
@@ -237,7 +256,23 @@ func (m *SqliteManager) GetChatSettings(chatId domain.ChatID) (*domain.Settings,
 	return settings, nil
 }
 
+func (m *SqliteManager) GetChatSettings(chatId domain.ChatID) (*domain.Settings, error) {
+	row := m.getChatSettingsItem.QueryRow(chatId)
+
+	m.dbLock.RLock()
+	defer m.dbLock.RUnlock()
+
+	return m.getChatSettings(&chatId, row)
+}
+
 func (m *SqliteManager) StoreChatSettings(chatId domain.ChatID, settings *domain.Settings) error {
+	if chatId == 0 {
+		return nil
+	}
+
+	m.dbLock.Lock()
+	defer m.dbLock.Unlock()
+
 	sessionRunning := settings.SessionRunning
 	if sessionRunning == nil {
 		sessionRunning = new(domain.Session)
@@ -321,12 +356,47 @@ func (m *SqliteManager) StoreChatSettings(chatId domain.ChatID, settings *domain
 }
 
 func (m *SqliteManager) DeleteChatSettings(chatId domain.ChatID) error {
+	m.dbLock.Lock()
+	defer m.dbLock.Unlock()
+
 	_, err := m.deleteChatSettingsItem.Exec(chatId)
 
 	return err
 }
 
-func (m *SqliteManager) GetActiveChatSettings() []utils.Pair[domain.ChatID, *domain.Settings] {
+func (m *SqliteManager) GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *domain.Settings], error) {
+	m.dbLock.RLock()
 
-	return nil
+	rows, err := m.getActiveChatsSettings.Query()
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		err := rows.Close()
+		defer m.dbLock.RUnlock()
+		if err != nil {
+			log.Printf("[GetActiveChatSettings] err at Close(): %v\n", err.Error())
+		}
+	}()
+
+	var pairs []utils.Pair[domain.ChatID, *domain.Settings]
+
+	for rows.Next() {
+		var chatId domain.ChatID
+
+		settings, scanErr := m.getChatSettings(&chatId, rows)
+
+		if scanErr != nil {
+			log.Println("[GetActiveChatSettings] internal scan error.")
+			continue
+		}
+
+		newPair := utils.Pair[domain.ChatID, *domain.Settings]{
+			First:  chatId,
+			Second: settings,
+		}
+		pairs = append(pairs, newPair)
+	}
+	return pairs, nil
 }

@@ -26,7 +26,7 @@ type PersistenceManager interface {
 	StoreChatSettings(id ChatID, settings *Settings) error
 	DeleteChatSettings(id ChatID) error
 
-	GetActiveChatSettings() []utils.Pair[ChatID, *Settings]
+	GetActiveChatSettings() ([]utils.Pair[ChatID, *Settings], error)
 }
 
 type AppState struct {

@@ -40,6 +40,8 @@ func CommandMenuLoop(
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
+	RestoreSessions(appState, bot)
+
 	updates := bot.GetUpdatesChan(u)
 
 	for update := range updates {
@@ -119,12 +121,12 @@ func CommandMenuLoop(
 				err := sessionmanager.CancelSession(session)
 				communicator.SessionCanceled(err, *session)
 			case "/resume":
-				ActionResumeSprint(update, appState, communicator)
+				ActionResumeSprint(senderId, chatId, appState, communicator)
 			case "/d", "/default":
 				data.UpdateUserSession(appState, chatId, senderId, domain.DefaultSession())
-				ActionStartSprint(update, appState, communicator)
+				ActionStartSprint(senderId, chatId, appState, communicator)
 			case "/s", "/start_sprint":
-				ActionStartSprint(update, appState, communicator)
+				ActionStartSprint(senderId, chatId, appState, communicator)
 			case "/reset":
 				data.CleanUserSettings(appState, chatId, senderId)
 				communicator.DataCleaned()
@@ -143,7 +145,7 @@ func CommandMenuLoop(
 
 					autorun := data.GetUserAutorun(appState, chatId, senderId)
 					if autorun {
-						ActionStartSprint(update, appState, communicator)
+						ActionStartSprint(senderId, chatId, appState, communicator)
 					}
 				}
 			}

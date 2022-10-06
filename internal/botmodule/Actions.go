@@ -4,13 +4,31 @@ import (
 	"GoforPomodoro/internal/data"
 	"GoforPomodoro/internal/domain"
 	"GoforPomodoro/internal/sessionmanager"
-	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 )
 
-func ActionResumeSprint(update tgbotapi.Update, appState *domain.AppState, communicator *Communicator) {
-	senderId := domain.ChatID(update.Message.From.ID)
-	chatId := domain.ChatID(update.Message.Chat.ID)
+func ActionRestoreSprint(
+	chatId domain.ChatID,
+	appState *domain.AppState,
+	session *domain.Session,
+	communicator *Communicator,
+) {
+	go sessionmanager.SpawnSessionTimer(
+		appState,
+		chatId,
+		session,
+		communicator.RestBeginHandler,
+		communicator.RestFinishedHandler,
+		communicator.SessionFinishedHandler,
+		communicator.SessionPausedHandler,
+	)
+}
 
+func ActionResumeSprint(
+	senderId domain.ChatID,
+	chatId domain.ChatID,
+	appState *domain.AppState,
+	communicator *Communicator,
+) {
 	session := data.GetUserSessionRunning(appState, chatId, senderId)
 	communicator.SessionResumed(
 		sessionmanager.ResumeSession(
@@ -26,9 +44,12 @@ func ActionResumeSprint(update tgbotapi.Update, appState *domain.AppState, commu
 	)
 }
 
-func ActionStartSprint(update tgbotapi.Update, appState *domain.AppState, communicator *Communicator) {
-	senderId := domain.ChatID(update.Message.From.ID)
-	chatId := domain.ChatID(update.Message.Chat.ID)
+func ActionStartSprint(
+	senderId domain.ChatID,
+	chatId domain.ChatID,
+	appState *domain.AppState,
+	communicator *Communicator,
+) {
 
 	session := data.GetUserSessionRunning(appState, chatId, senderId)
 
