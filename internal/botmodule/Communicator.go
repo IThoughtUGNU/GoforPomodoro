@@ -210,7 +210,7 @@ func (c *Communicator) NewSession(session domain.Session) {
 }
 
 func (c *Communicator) Info() {
-	c.ReplyWith("I am a pomodoro bot written in Go.\n\nExperimental Version for new concurrency")
+	c.ReplyWith("I am a pomodoro bot written in Go.\n\nExperimental Version for new concurrency and persistence.")
 }
 
 func (c *Communicator) DataCleaned() {
