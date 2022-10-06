@@ -145,9 +145,11 @@ func CleanUserSettings(appState *domain.AppState, chatId domain.ChatID, senderId
 	appState.UsersSettings[chatId] = nil
 	appState.UsersSettingsLock.Unlock()
 
-	err := appState.PersistenceManager.DeleteChatSettings(chatId)
-	if err != nil {
-		log.Printf("[DataModel::CleanUserSettings] error in deleting. (%v)\n", err.Error())
+	if appState.PersistenceManager != nil {
+		err := appState.PersistenceManager.DeleteChatSettings(chatId)
+		if err != nil {
+			log.Printf("[DataModel::CleanUserSettings] error in deleting. (%v)\n", err.Error())
+		}
 	}
 	defaultUserSettingsIfNeeded(appState, chatId)
 }
@@ -161,9 +163,11 @@ func SetUserAutorun(appState *domain.AppState, chatId domain.ChatID, senderId do
 
 	chatSettings.Autorun = autorun
 
-	err := appState.PersistenceManager.StoreChatSettings(chatId, chatSettings)
-	if err != nil {
-		log.Printf("[DataModel::SetUserAutorun] error in storing. (%v)\n", err.Error())
+	if appState.PersistenceManager != nil {
+		err := appState.PersistenceManager.StoreChatSettings(chatId, chatSettings)
+		if err != nil {
+			log.Printf("[DataModel::SetUserAutorun] error in storing. (%v)\n", err.Error())
+		}
 	}
 }
 
@@ -197,14 +201,12 @@ func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	appState.UsersSettingsLock.RLock()
-	defer appState.UsersSettingsLock.RUnlock()
-
 	settings := appState.UsersSettings[chatId]
+	appState.UsersSettingsLock.RUnlock()
 
 	settings.SessionDefault = session
 
 	if appState.PersistenceManager != nil {
-
 		err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
 		if err != nil {
 			log.Printf("[DataModel::UpdateUserSession] error in storing. (%v)\n", err.Error())
