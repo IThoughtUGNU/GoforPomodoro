@@ -15,7 +15,12 @@ func main() {
 	}
 
 	sqliteManager := &persistence.SqliteManager{}
-	sqliteManager.OpenDatabase("./data/go4pom_data.db")
+	dbErr := sqliteManager.OpenDatabase("./data/go4pom_data.db")
+	if dbErr != nil {
+		sqliteManager = nil // DB-less mode.
+		log.Println("[main] Running bot with no database (there will be no persistence).")
+		// panic(dbErr)
+	}
 
 	appState, err := data.LoadAppState(sqliteManager)
 	if err != nil {
