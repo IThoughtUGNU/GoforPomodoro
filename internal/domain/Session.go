@@ -183,7 +183,7 @@ func (s *Session) GetRestDuration() RestDuration {
 	}
 
 	if s.endNextRestTimestamp == nil || s.IsPaused() {
-		log.Println("Fallback to s.RestDuration")
+		// log.Println("Fallback to s.RestDuration")
 		return s.data.RestDuration
 	}
 
@@ -212,7 +212,7 @@ func (s *Session) GetPomodoroDuration() PomodoroDuration {
 	}
 
 	if s.endNextSprintTimestamp == nil || s.IsPaused() {
-		log.Println("Fallback to s.PomodoroDuration")
+		// log.Println("Fallback to s.PomodoroDuration")
 		return s.data.PomodoroDuration
 	}
 

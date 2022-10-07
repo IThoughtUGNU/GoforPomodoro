@@ -45,40 +45,37 @@ func LoadAppSettings() (*domain.AppSettings, error) {
 	return settings, err
 }
 
-func LoadAppState(persistenceManager persistence.Manager) (*domain.AppState, error) {
-	// temporary
+func LoadAppState(persistenceManager persistence.Manager, debugMode bool) (*domain.AppState, error) {
 	appState := new(domain.AppState)
+
+	appState.DebugMode = debugMode
 
 	appState.PersistenceManager = persistenceManager
 
 	appState.UsersSettingsLock.Lock()
-	defer appState.UsersSettingsLock.Unlock()
 	appState.UsersSettings = make(map[domain.ChatID]*domain.Settings)
+	appState.UsersSettingsLock.Unlock()
 
 	return appState, nil
 }
 
 func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID) {
-	appState.UsersSettingsLock.Lock()
-	defer appState.UsersSettingsLock.Unlock()
-
-	if appState.UsersSettings[chatId] == nil {
+	if appState.ReadSettings(chatId) == nil {
 		// Check if there is in the database, otherwise we create new settings in-place
 		if appState.PersistenceManager == nil {
 			chatSettings := new(domain.Settings)
 			chatSettings.Autorun = true
-			appState.UsersSettings[chatId] = chatSettings
+			appState.WriteSettings(chatId, chatSettings)
 		} else {
 			chatSettings, err := appState.PersistenceManager.GetChatSettings(chatId)
 
 			if err != nil {
 				chatSettings := new(domain.Settings)
 				chatSettings.Autorun = true
-				appState.UsersSettings[chatId] = chatSettings
+				appState.WriteSettings(chatId, chatSettings)
 			} else { // err == nil
 
-				// Load settings
-				appState.UsersSettings[chatId] = chatSettings
+				appState.WriteSettings(chatId, chatSettings)
 			}
 		}
 	}
@@ -86,27 +83,20 @@ func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID
 
 func AdjustChatType(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, isGroup bool) {
 	defaultUserSettingsIfNeeded(appState, chatId)
-	appState.UsersSettingsLock.Lock()
-	appState.UsersSettings[chatId].IsGroup = isGroup
-	appState.UsersSettingsLock.Unlock()
+
+	appState.ReadSettings(chatId).IsGroup = isGroup
 }
 
 func IsGroup(appState *domain.AppState, chatId domain.ChatID) bool {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettingsLock.RLock()
-	defer appState.UsersSettingsLock.RUnlock()
-
-	return appState.UsersSettings[chatId].IsGroup
+	return appState.ReadSettings(chatId).IsGroup
 }
 
 func GetSubscribers(appState *domain.AppState, chatId domain.ChatID) []domain.ChatID {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettingsLock.RLock()
-	defer appState.UsersSettingsLock.RUnlock()
-
-	return appState.UsersSettings[chatId].Subscribers
+	return appState.ReadSettings(chatId).Subscribers
 }
 
 func SubscribeUserInGroup(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) error {
@@ -116,9 +106,7 @@ func SubscribeUserInGroup(appState *domain.AppState, chatId domain.ChatID, sende
 		return domain.SubscriptionError{}
 	}
 
-	appState.UsersSettingsLock.RLock()
-	settings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
+	settings := appState.ReadSettings(chatId)
 
 	subscribers := (*settings).Subscribers
 	if !utils.Contains(subscribers, senderId) {
@@ -136,29 +124,29 @@ func UnsubscribeUser(appState *domain.AppState, chatId domain.ChatID, senderId d
 		return domain.SubscriptionError{}
 	}
 
-	appState.UsersSettingsLock.RLock()
-	settings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
+	settings := appState.ReadSettings(chatId)
 
 	subscribers := (*settings).Subscribers
 	if utils.Contains(subscribers, senderId) {
 		newS, err := utils.AfterRemoveEl(subscribers, senderId)
 		if err != nil {
-			log.Printf("[UnsubscribeUser] Error while removing %d\n", senderId)
+			if appState.DebugMode {
+				log.Printf("[UnsubscribeUser] Error while removing %d\n", senderId)
+			}
 			return domain.OperationError{}
 		}
 		(*settings).Subscribers = newS
 	} else {
-		log.Printf("[UnsubscribeUser] %d was not subscribed.", senderId)
+		if appState.DebugMode {
+			log.Printf("[UnsubscribeUser] %d was not subscribed.", senderId)
+		}
 		return domain.AlreadyUnsubscribed{}
 	}
 	return nil
 }
 
 func CleanUserSettings(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) {
-	appState.UsersSettingsLock.Lock()
-	appState.UsersSettings[chatId] = nil
-	appState.UsersSettingsLock.Unlock()
+	appState.WriteSettings(chatId, nil)
 
 	if appState.PersistenceManager != nil {
 		err := appState.PersistenceManager.DeleteChatSettings(chatId)
@@ -166,15 +154,13 @@ func CleanUserSettings(appState *domain.AppState, chatId domain.ChatID, senderId
 			log.Printf("[DataModel::CleanUserSettings] error in deleting. (%v)\n", err.Error())
 		}
 	}
-	defaultUserSettingsIfNeeded(appState, chatId)
+	// defaultUserSettingsIfNeeded(appState, chatId)
 }
 
 func SetUserAutorun(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, autorun bool) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettingsLock.RLock()
-	chatSettings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
+	chatSettings := appState.ReadSettings(chatId)
 
 	chatSettings.Autorun = autorun
 
@@ -189,17 +175,12 @@ func SetUserAutorun(appState *domain.AppState, chatId domain.ChatID, senderId do
 func GetUserAutorun(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) bool {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettingsLock.RLock()
-	defer appState.UsersSettingsLock.RUnlock()
-
-	return appState.UsersSettings[chatId].Autorun
+	return appState.ReadSettings(chatId).Autorun
 }
 
 func UpdateUserSessionRunning(appState *domain.AppState, chatId domain.ChatID) {
 
-	appState.UsersSettingsLock.RLock()
-	settings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
+	settings := appState.ReadSettings(chatId)
 
 	// TODO: Dispatch this call to a goroutine using a channel instead of spawning a go-func
 	go func() {
@@ -215,9 +196,7 @@ func UpdateUserSessionRunning(appState *domain.AppState, chatId domain.ChatID) {
 func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, session domain.Session) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettingsLock.RLock()
-	settings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
+	settings := appState.ReadSettings(chatId)
 
 	settings.SessionDefault = session
 
@@ -232,10 +211,7 @@ func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId
 func GetUserSessionFromSettings(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) domain.SessionInitData {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	appState.UsersSettingsLock.RLock()
-	session := &appState.UsersSettings[chatId].SessionDefault
-	appState.UsersSettingsLock.RUnlock()
-	// session.Data.IsPaused = true
+	session := &appState.ReadSettings(chatId).SessionDefault
 
 	sData := session.ToInitData()
 	sData.IsPaused = true
@@ -255,9 +231,7 @@ func GetNewUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, s
 
 	sessionRunning := sessionDef.ToSession().InitChannel()
 
-	appState.UsersSettingsLock.RLock()
-	settings := appState.UsersSettings[chatId]
-	appState.UsersSettingsLock.RUnlock()
+	settings := appState.ReadSettings(chatId)
 
 	settings.SessionRunning = sessionRunning
 
@@ -265,16 +239,9 @@ func GetNewUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, s
 }
 
 func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID) *domain.Session {
-
-	// log.Printf("[NO-DB TEST] about to defaultUserSettingsIfNeeded\n")
 	defaultUserSettingsIfNeeded(appState, chatId)
 
-	// log.Printf("[NO-DB TEST] defaultUserSettingsIfNeeded done\n")
-	appState.UsersSettingsLock.RLock()
-	// log.Printf("[NO-DB TEST] RLock acquired\n")
-
-	sessionRunning := appState.UsersSettings[chatId].SessionRunning
-	appState.UsersSettingsLock.RUnlock()
+	sessionRunning := appState.ReadSettings(chatId).SessionRunning
 
 	// var sessionRunning *domain.Session
 
@@ -289,9 +256,8 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 
 		sessionRunning = sessionDef.ToSession().InitChannel()
 
-		appState.UsersSettingsLock.RLock()
-		appState.UsersSettings[chatId].SessionRunning = sessionRunning
-		appState.UsersSettingsLock.RUnlock()
+		appState.ReadSettings(chatId).SessionRunning = sessionRunning
+
 		/*
 			appState.UsersSettings[chatId].SessionRunning = new(domain.Session).InitChannel()
 
@@ -307,9 +273,7 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 
 			sessionRunning.Data.IsPaused = true*/
 	} else {
-		appState.UsersSettingsLock.RLock()
-		sessionRunning = appState.UsersSettings[chatId].SessionRunning
-		appState.UsersSettingsLock.RUnlock()
+		sessionRunning = appState.ReadSettings(chatId).SessionRunning
 
 		if sessionRunning.ActionsChannel == nil {
 			sessionRunning = sessionRunning.InitChannel()

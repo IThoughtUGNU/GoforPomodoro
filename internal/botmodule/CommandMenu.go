@@ -48,7 +48,8 @@ func CommandMenuLoop(
 		log.Panic(err)
 	}
 
-	bot.Debug = true
+	debugMode := settings.DebugMode
+	bot.Debug = debugMode
 
 	log.Printf("Authorized on account %s", bot.Self.UserName)
 
@@ -65,7 +66,9 @@ func CommandMenuLoop(
 			senderId := domain.ChatID(update.Message.From.ID)
 			chatId := domain.ChatID(update.Message.Chat.ID)
 
-			log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+			if debugMode {
+				log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+			}
 
 			msgText := update.Message.Text
 
@@ -74,7 +77,10 @@ func CommandMenuLoop(
 
 			command := inputprocess.CommandFrom(settings, msgText)
 			parameters := inputprocess.ParametersFrom(msgText)
-			log.Printf("command: %s\n", command)
+
+			if debugMode {
+				log.Printf("command: %s\n", command)
+			}
 
 			isGroup := update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup()
 			data.AdjustChatType(appState, chatId, senderId, isGroup)
@@ -153,19 +159,12 @@ func CommandMenuLoop(
 				communicator.Hourglass()
 			default:
 				newSession := inputprocess.ParsePatternToSession(nil, msgText)
-
-				// log.Printf("[NO-DB TEST] session: %v\n", newSession)
-
 				if newSession != nil {
 					data.UpdateUserSession(appState, chatId, senderId, *newSession)
-					// log.Printf("[NO-DB TEST] session updated\n")
 					communicator.NewSession(*newSession)
-
 					autorun := data.GetUserAutorun(appState, chatId, senderId)
-					// log.Printf("[NO-DB TEST] autorun: %v\n", autorun)
 					if autorun {
 						ActionStartSprint(senderId, chatId, appState, communicator)
-						// log.Printf("[NO-DB TEST] session started\n")
 					}
 				}
 			}

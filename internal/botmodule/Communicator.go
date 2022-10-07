@@ -33,8 +33,8 @@ var simpleHourglassKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 )
 
 type Communicator struct {
-	appState *domain.AppState
-	domain.ChatID
+	appState    *domain.AppState
+	ChatID      domain.ChatID
 	Bot         *tgbotapi.BotAPI
 	Subscribers []domain.ChatID
 	IsGroup     bool

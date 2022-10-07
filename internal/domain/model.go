@@ -21,8 +21,9 @@ import (
 )
 
 type AppSettings struct {
-	ApiToken string
-	BotName  string
+	ApiToken  string
+	BotName   string
+	DebugMode bool
 }
 
 type ChatID int64
@@ -45,8 +46,29 @@ type PersistenceManager interface {
 }
 
 type AppState struct {
+	DebugMode bool
+
 	PersistenceManager PersistenceManager
 
 	UsersSettings     map[ChatID]*Settings
 	UsersSettingsLock sync.RWMutex
+}
+
+func (appState *AppState) ReadSettings(
+	chatId ChatID,
+) *Settings {
+	appState.UsersSettingsLock.RLock()
+	defer appState.UsersSettingsLock.RUnlock()
+
+	return appState.UsersSettings[chatId]
+}
+
+func (appState *AppState) WriteSettings(
+	chatId ChatID,
+	settings *Settings,
+) {
+	appState.UsersSettingsLock.Lock()
+	defer appState.UsersSettingsLock.Unlock()
+
+	appState.UsersSettings[chatId] = settings
 }

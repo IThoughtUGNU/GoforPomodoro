@@ -37,12 +37,14 @@ func main() {
 		// panic(dbErr)
 	}
 
-	appState, err := data.LoadAppState(sqliteManager)
+	debugMode := settings.DebugMode
+
+	appState, err := data.LoadAppState(sqliteManager, debugMode)
 	if err != nil {
 		panic(err)
 	}
 
-	fmt.Println("Hello from Go for Pomodoro!")
+	fmt.Printf("Hello from Go for Pomodoro!\n\n(debug mode set to: %v)\n\n", debugMode)
 
 	botmodule.CommandMenuLoop(settings, appState)
 }
