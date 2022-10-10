@@ -20,9 +20,22 @@ import (
 	"GoforPomodoro/internal/data/persistence"
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"os"
+)
+
+type ErrorType int
+
+const (
+	NoAppSettings   ErrorType = 1 << iota // 1
+	NoDB                                  // 2
+	NoAPIConnection                       // 4
 )
 
 func main() {
+	var noAppSettings ErrorType
+	var noDb ErrorType
+	var noApiConn ErrorType
+
 	okSymbol := "✅"
 	errSymbol := "❌"
 
@@ -33,6 +46,7 @@ func main() {
 	var s string
 	if err != nil || (len(settings.ApiToken) == 0 || len(settings.BotName) == 0) {
 		s = errSymbol
+		noAppSettings = NoAppSettings
 	} else {
 		s = okSymbol
 	}
@@ -48,6 +62,7 @@ func main() {
 	if dbErr != nil {
 		sqliteManager = nil // DB-less mode.
 		s = errSymbol
+		noDb = NoDB
 	} else {
 		s = okSymbol
 	}
@@ -63,6 +78,7 @@ func main() {
 	bot, err := tgbotapi.NewBotAPI(settings.ApiToken)
 	if err != nil {
 		s = errSymbol
+		noApiConn = NoAPIConnection
 	} else {
 		s = okSymbol
 	}
@@ -77,4 +93,6 @@ func main() {
 	}
 	fmt.Println()
 	fmt.Println()
+
+	os.Exit(int(noAppSettings | noDb | noApiConn))
 }
