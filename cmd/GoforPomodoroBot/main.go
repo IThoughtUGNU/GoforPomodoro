@@ -24,6 +24,11 @@ import (
 )
 
 func main() {
+	appVariables, err := data.LoadAppVariables()
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	settings, err := data.LoadAppSettings()
 	if err != nil {
 		log.Fatal(err)
@@ -46,5 +51,5 @@ func main() {
 
 	fmt.Printf("Hello from Go for Pomodoro!\n\n(debug mode set to: %v)\n\n", debugMode)
 
-	botmodule.CommandMenuLoop(settings, appState)
+	botmodule.CommandMenuLoop(settings, appVariables, appState)
 }

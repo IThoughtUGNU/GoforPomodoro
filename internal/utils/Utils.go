@@ -104,3 +104,41 @@ type Pair[T, U any] struct {
 	First  T
 	Second U
 }
+
+type EmptyOptionalError struct{}
+
+func (_ EmptyOptionalError) Error() string {
+	return "Value is empty"
+}
+
+type Optional[T any] struct {
+	value   T
+	isEmpty bool
+}
+
+func OptionalOf[T any](value T) (opt Optional[T]) {
+	opt.isEmpty = false
+	opt.value = value
+
+	return
+}
+
+func OptionalOfNil[T any]() (opt Optional[T]) {
+	opt.isEmpty = false
+
+	return
+}
+
+func (opt Optional[T]) GetValue() (value T, err error) {
+	if opt.isEmpty {
+		err = EmptyOptionalError{}
+	} else {
+		value = opt.value
+		err = nil
+	}
+	return
+}
+
+func (opt Optional[T]) IsEmpty() bool {
+	return opt.isEmpty
+}

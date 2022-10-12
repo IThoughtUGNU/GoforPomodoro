@@ -188,18 +188,7 @@ func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*
 	var subscribersText string
 	var active bool
 
-	defaultS := domain.SessionInitData{
-		SprintDurationSet:   0,
-		PomodoroDurationSet: 0,
-		RestDurationSet:     0,
-		SprintDuration:      0,
-		PomodoroDuration:    0,
-		RestDuration:        0,
-		IsRest:              false,
-		IsPaused:            false,
-		IsCancel:            false,
-		IsFinished:          false,
-	}
+	defaultS := domain.SessionDefaultData{}
 
 	runningS := domain.SessionInitData{}
 
@@ -265,7 +254,7 @@ func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*
 	}
 
 	settings := &domain.Settings{
-		SessionDefault: *defaultS.ToSession(),
+		SessionDefault: defaultS,
 		SessionRunning: runningS.ToSession(),
 		Autorun:        autorun,
 		IsGroup:        isGroup,
@@ -296,9 +285,9 @@ func (m *SqliteManager) StoreChatSettings(chatId domain.ChatID, settings *domain
 		sessionRunning = new(domain.Session)
 	}
 
-	defaultSprintDurationSet := settings.SessionDefault.GetSprintDurationSet()
-	defaultPomodoroDurationSet := settings.SessionDefault.GetPomodoroDurationSet()
-	defaultRestDurationSet := settings.SessionDefault.GetRestDurationSet()
+	defaultSprintDurationSet := settings.SessionDefault.SprintDurationSet
+	defaultPomodoroDurationSet := settings.SessionDefault.PomodoroDurationSet
+	defaultRestDurationSet := settings.SessionDefault.RestDurationSet
 
 	runningSprintDurationSet := sessionRunning.GetSprintDurationSet()
 	runningPomodoroDurationSet := sessionRunning.GetPomodoroDurationSet()

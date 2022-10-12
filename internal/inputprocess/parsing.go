@@ -17,6 +17,7 @@ package inputprocess
 
 import (
 	"GoforPomodoro/internal/domain"
+	"GoforPomodoro/internal/utils"
 	"regexp"
 	"strconv"
 	"strings"
@@ -29,6 +30,14 @@ const (
 	CardinalityGroup = 3
 	RestGroup        = 5
 )
+
+var privacySettingsCommands = "/accept_all::/accept_essential"
+
+func IsPrivacySettingsCommand(text string) bool {
+	commands := strings.Split(privacySettingsCommands, "::")
+
+	return utils.Contains(commands, text)
+}
 
 func CommandFrom(appSettings *domain.AppSettings, text string) string {
 	command := strings.Split(text, " ")[0]
@@ -49,53 +58,47 @@ func ParametersFrom(text string) []string {
 	return strings.Split(text, " ")[1:]
 }
 
-func ParsePatternToSession(r *regexp.Regexp, text string) *domain.Session {
+func ParsePatternToSession(r *regexp.Regexp, text string) utils.Optional[domain.SessionDefaultData] {
 	if r == nil {
 		r = regexp.MustCompile(BasicPattern)
 	}
 	matches := r.FindAllStringSubmatch(text, -1)
 
-	var sessionInitData domain.SessionInitData
+	var sessionDefaultData domain.SessionDefaultData
 
 	match := false
 	for _, v := range matches {
 		match = true
 
-		sessionInitData.SprintDurationSet = 1
-		sessionInitData.SprintDuration = 1
-		sessionInitData.IsPaused = true
+		sessionDefaultData.SprintDurationSet = 1
 
 		// Mandatory parameter for this command.
 		pomDuration, err := strconv.Atoi(v[MinutesGroup])
 		if err != nil {
-			return nil
+			return utils.OptionalOfNil[domain.SessionDefaultData]()
 		}
-		sessionInitData.PomodoroDurationSet = domain.PomodoroDuration(pomDuration * 60) // time from minutes to seconds.
-		sessionInitData.PomodoroDuration = sessionInitData.PomodoroDurationSet
+		sessionDefaultData.PomodoroDurationSet = domain.PomodoroDuration(pomDuration * 60) // time from minutes to seconds.
 
 		// Other parameters are optional
 		sprintDuration, err := strconv.Atoi(v[CardinalityGroup])
 		if err == nil {
-			sessionInitData.SprintDurationSet = domain.SprintDuration(sprintDuration)
-			sessionInitData.SprintDuration = sessionInitData.SprintDurationSet
+			sessionDefaultData.SprintDurationSet = domain.SprintDuration(sprintDuration)
 
 			// Default 5 minutes of rest duration in case user did not specify.
-			sessionInitData.RestDurationSet = 5 * 60
-			sessionInitData.RestDuration = sessionInitData.RestDurationSet
+			sessionDefaultData.RestDurationSet = 5 * 60
 		}
 
 		restDuration, err := strconv.Atoi(v[RestGroup])
 		if err == nil {
-			sessionInitData.RestDurationSet = domain.RestDuration(restDuration * 60)
-			sessionInitData.RestDuration = sessionInitData.RestDurationSet
+			sessionDefaultData.RestDurationSet = domain.RestDuration(restDuration * 60)
 		}
 
 		break
 	}
 
 	if !match {
-		return nil
+		return utils.OptionalOfNil[domain.SessionDefaultData]()
 	}
 
-	return sessionInitData.ToSession()
+	return utils.OptionalOf(sessionDefaultData)
 }

@@ -41,6 +41,7 @@ var numericKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 
 func CommandMenuLoop(
 	settings *domain.AppSettings,
+	appVariables *domain.AppVariables,
 	appState *domain.AppState,
 ) {
 	bot, err := tgbotapi.NewBotAPI(settings.ApiToken)
@@ -56,7 +57,9 @@ func CommandMenuLoop(
 	u := tgbotapi.NewUpdate(0)
 	u.Timeout = 60
 
-	RestoreSessions(appState, bot)
+	RestoreSessions(appState, appVariables, bot)
+
+	privacyVersion := appVariables.PrivacySettingsVersion
 
 	updates := bot.GetUpdatesChan(u)
 
@@ -85,7 +88,30 @@ func CommandMenuLoop(
 			isGroup := update.Message.Chat.IsGroup() || update.Message.Chat.IsSuperGroup()
 			data.AdjustChatType(appState, chatId, senderId, isGroup)
 
-			communicator := GetCommunicator(appState, chatId, bot)
+			communicator := GetCommunicator(appState, appVariables, chatId, bot)
+
+			// Check privacy policy agreement
+			userPrivacy, userPrivacyVersion := data.GetUserPrivacyPolicy(appState, chatId)
+			if userPrivacy.IsZero() || privacyVersion > userPrivacyVersion {
+				// The user has no privacy policy set (or it is too old).
+
+				// If the user is changing privacy now, we manage the change.
+				if inputprocess.IsPrivacySettingsCommand(command) {
+					switch command {
+					case "/accept_essential":
+						data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedEssential, privacyVersion)
+					case "/accept_all":
+						data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedAll, privacyVersion)
+					}
+					communicator.PrivacySettingsUpdated()
+				} else {
+					// Otherwise, must show privacy policy
+					communicator.ShowPrivacyPolicy()
+					communicator.ShowLicenseNotice()
+				}
+				continue
+			}
+
 			switch command {
 			// Group commands
 			case "/join":
@@ -144,7 +170,7 @@ func CommandMenuLoop(
 			case "/resume":
 				ActionResumeSprint(senderId, chatId, appState, communicator)
 			case "/d", "/default":
-				data.UpdateUserSession(appState, chatId, senderId, domain.DefaultSession())
+				data.UpdateDefaultUserSession(appState, chatId, senderId, domain.DefaultSession())
 				ActionStartSprint(senderId, chatId, appState, communicator)
 			case "/s", "/start_sprint":
 				ActionStartSprint(senderId, chatId, appState, communicator)
@@ -158,10 +184,11 @@ func CommandMenuLoop(
 			case "/clessidra":
 				communicator.Hourglass()
 			default:
-				newSession := inputprocess.ParsePatternToSession(nil, msgText)
-				if newSession != nil {
-					data.UpdateUserSession(appState, chatId, senderId, *newSession)
-					communicator.NewSession(*newSession)
+				sessionDataOpt := inputprocess.ParsePatternToSession(nil, msgText)
+				sessionData, err := sessionDataOpt.GetValue()
+				if err == nil {
+					data.UpdateDefaultUserSession(appState, chatId, senderId, sessionData)
+					communicator.NewSession(sessionData)
 					autorun := data.GetUserAutorun(appState, chatId, senderId)
 					if autorun {
 						ActionStartSprint(senderId, chatId, appState, communicator)

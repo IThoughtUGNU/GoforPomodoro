@@ -24,6 +24,7 @@ import (
 
 func RestoreSessions(
 	appState *domain.AppState,
+	appVariables *domain.AppVariables,
 	bot *tgbotapi.BotAPI,
 ) {
 	if appState.PersistenceManager != nil {
@@ -43,7 +44,7 @@ func RestoreSessions(
 
 				runningSession := settings.SessionRunning
 
-				communicator := GetCommunicator(appState, chatId, bot)
+				communicator := GetCommunicator(appState, appVariables, chatId, bot)
 				ActionRestoreSprint(chatId, appState, runningSession, communicator)
 			}
 		}

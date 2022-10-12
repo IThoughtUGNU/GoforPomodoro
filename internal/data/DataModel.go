@@ -45,6 +45,13 @@ func LoadAppSettings() (*domain.AppSettings, error) {
 	return settings, err
 }
 
+func LoadAppVariables() (*domain.AppVariables, error) {
+	appVariables := new(domain.AppVariables)
+	_, err := toml.DecodeFile("appvariables.toml", appVariables)
+
+	return appVariables, err
+}
+
 func LoadAppState(persistenceManager persistence.Manager, debugMode bool) (*domain.AppState, error) {
 	appState := new(domain.AppState)
 
@@ -79,6 +86,33 @@ func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID
 			}
 		}
 	}
+}
+
+func SetUserPrivacyPolicy(
+	appState *domain.AppState,
+	chatId domain.ChatID,
+	privacyPolicy domain.PrivacySettingsType,
+	privacyVersion domain.PrivacySettingsVersion,
+) {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	settings := appState.ReadSettings(chatId)
+
+	settings.PrivacySettings = settings.PrivacySettings | privacyPolicy
+	settings.PrivacySettingsVersion = privacyVersion
+}
+
+func GetUserPrivacyPolicy(
+	appState *domain.AppState,
+	chatId domain.ChatID,
+) (domain.PrivacySettingsType,
+	domain.PrivacySettingsVersion,
+) {
+	defaultUserSettingsIfNeeded(appState, chatId)
+
+	settings := appState.ReadSettings(chatId)
+
+	return settings.PrivacySettings, settings.PrivacySettingsVersion
 }
 
 func AdjustChatType(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, isGroup bool) {
@@ -193,17 +227,17 @@ func UpdateUserSessionRunning(appState *domain.AppState, chatId domain.ChatID) {
 	}()
 }
 
-func UpdateUserSession(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, session domain.Session) {
+func UpdateDefaultUserSession(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, sdd domain.SessionDefaultData) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
 	settings := appState.ReadSettings(chatId)
 
-	settings.SessionDefault = session
+	settings.SessionDefault = sdd
 
 	if appState.PersistenceManager != nil {
 		err := appState.PersistenceManager.StoreChatSettings(chatId, settings)
 		if err != nil {
-			log.Printf("[DataModel::UpdateUserSession] error in storing. (%v)\n", err.Error())
+			log.Printf("[DataModel::UpdateDefaultUserSession] error in storing. (%v)\n", err.Error())
 		}
 	}
 }

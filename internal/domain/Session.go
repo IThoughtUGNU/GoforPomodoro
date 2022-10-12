@@ -75,6 +75,37 @@ type SessionData struct {
 	IsFinished bool
 }
 
+type SessionDefaultData struct {
+	SprintDurationSet   SprintDuration
+	PomodoroDurationSet PomodoroDuration
+	RestDurationSet     RestDuration
+}
+
+func SessionDefaultDataFromSession(s *Session) (sdd SessionDefaultData) {
+	sdd.PomodoroDurationSet = s.GetPomodoroDurationSet()
+	sdd.RestDurationSet = s.GetRestDurationSet()
+	sdd.SprintDurationSet = s.GetSprintDurationSet()
+
+	return
+}
+
+func (sdd SessionDefaultData) ToInitData() (sid SessionInitData) {
+	sid.SprintDurationSet = sdd.SprintDurationSet
+	sid.PomodoroDurationSet = sdd.PomodoroDurationSet
+	sid.RestDurationSet = sdd.RestDurationSet
+
+	sid.SprintDuration = sdd.SprintDurationSet
+	sid.PomodoroDuration = sdd.PomodoroDurationSet
+	sid.RestDuration = sdd.RestDurationSet
+
+	sid.IsPaused = true
+	sid.IsRest = false
+	sid.IsFinished = false
+	sid.IsCancel = false
+
+	return
+}
+
 // SessionInitData represents a struct you use to initialize a session.
 type SessionInitData struct {
 	SprintDurationSet   SprintDuration
@@ -251,17 +282,11 @@ func (s *Session) IsRest() bool {
 //
 // ActionsChannel not initialized, therefore should call .InitChannel() if you
 // plan to run a session from this object's value.
-func DefaultSession() Session {
-	return Session{
-		sprintDurationSet:   4,
-		pomodoroDurationSet: 25 * 60,
-		restDurationSet:     25 * 60,
-
-		data: SessionData{
-			SprintDuration:   4,
-			PomodoroDuration: 25 * 60,
-			RestDuration:     25 * 60,
-		},
+func DefaultSession() SessionDefaultData {
+	return SessionDefaultData{
+		SprintDurationSet:   4,
+		PomodoroDurationSet: 25 * 60,
+		RestDurationSet:     25 * 60,
 	}
 }
 
@@ -341,6 +366,21 @@ func (s *Session) String() string {
 		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
 		middleStr +
 		fmt.Sprintf("\n\nCurrent session state: %s", s.State())
+}
+
+func (s SessionDefaultData) String() string {
+	if s.PomodoroDurationSet == 0 {
+		return "No session"
+	}
+
+	var middleStr string
+	sprintDuration := s.SprintDurationSet
+
+	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
+		s.SprintDurationSet, s.PomodoroDurationSet/60, s.RestDurationSet/60) +
+		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
+		middleStr +
+		fmt.Sprintf("\n\nCurrent session state: Pending")
 }
 
 // LeftTimeMessage Print in a string in human-readable format (aimed at the

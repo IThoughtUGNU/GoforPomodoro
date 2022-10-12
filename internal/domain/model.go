@@ -20,20 +20,55 @@ import (
 	"sync"
 )
 
+type PrivacySettingsVersion int
+
+type PrivacySettingsType int
+
+const (
+	AcceptedEssential PrivacySettingsType = 1 << iota // 1
+	AcceptedAll                                       // 2
+)
+
+func (privacy PrivacySettingsType) IsZero() bool {
+	return privacy == 0
+}
+
+func (privacy PrivacySettingsType) HasAcceptedEssential() bool {
+	return privacy&AcceptedEssential != 0 ||
+		privacy&AcceptedAll != 0
+}
+
+func (privacy PrivacySettingsType) HasAcceptedAll() bool {
+	return privacy&AcceptedEssential != 0 ||
+		privacy&AcceptedAll != 0
+}
+
 type AppSettings struct {
 	ApiToken  string
 	BotName   string
 	DebugMode bool
 }
 
+type AppVariables struct {
+	PrivacyPolicy1 string
+	OpenSource1    string
+	PrivacySettingsVersion
+}
+
+func (v AppVariables) IsPrivacyPolicyVersionUpdated(version PrivacySettingsVersion) bool {
+	return version == v.PrivacySettingsVersion
+}
+
 type ChatID int64
 
 type Settings struct {
-	SessionDefault Session
-	SessionRunning *Session
-	Autorun        bool
-	IsGroup        bool
-	Subscribers    []ChatID
+	SessionDefault  SessionDefaultData
+	SessionRunning  *Session
+	Autorun         bool
+	IsGroup         bool
+	Subscribers     []ChatID
+	PrivacySettings PrivacySettingsType
+	PrivacySettingsVersion
 }
 
 type PersistenceManager interface {

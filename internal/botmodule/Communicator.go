@@ -33,17 +33,19 @@ var simpleHourglassKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 )
 
 type Communicator struct {
-	appState    *domain.AppState
-	ChatID      domain.ChatID
-	Bot         *tgbotapi.BotAPI
-	Subscribers []domain.ChatID
-	IsGroup     bool
+	appState     *domain.AppState
+	appVariables *domain.AppVariables
+	ChatID       domain.ChatID
+	Bot          *tgbotapi.BotAPI
+	Subscribers  []domain.ChatID
+	IsGroup      bool
 }
 
-func GetCommunicator(appState *domain.AppState, chatId domain.ChatID, bot *tgbotapi.BotAPI) *Communicator {
+func GetCommunicator(appState *domain.AppState, appVariables *domain.AppVariables, chatId domain.ChatID, bot *tgbotapi.BotAPI) *Communicator {
 	communicator := new(Communicator)
 
 	communicator.appState = appState
+	communicator.appVariables = appVariables
 	communicator.ChatID = chatId
 	communicator.Bot = bot
 	communicator.Subscribers = data.GetSubscribers(appState, chatId)
@@ -115,6 +117,19 @@ func (c *Communicator) ReplyWith(text string) {
 	chatId := int64(c.ChatID)
 
 	msg := tgbotapi.NewMessage(chatId, text)
+	_, err := bot.Send(msg)
+	if err != nil {
+		log.Printf("ERROR: %s", err.Error())
+	}
+}
+
+func (c *Communicator) ReplyWithParseMode(text string, parseMode string, disablePreview bool) {
+	bot := c.Bot
+	chatId := int64(c.ChatID)
+
+	msg := tgbotapi.NewMessage(chatId, text)
+	msg.ParseMode = parseMode
+	msg.DisableWebPagePreview = disablePreview
 	_, err := bot.Send(msg)
 	if err != nil {
 		log.Printf("ERROR: %s", err.Error())
@@ -220,7 +235,7 @@ func (c *Communicator) OnlyGroupsCommand() {
 	c.ReplyWith("This command works only in groups, sorry.")
 }
 
-func (c *Communicator) NewSession(session domain.Session) {
+func (c *Communicator) NewSession(session domain.SessionDefaultData) {
 	c.ReplyWith(fmt.Sprintf("New session!\n\n%s", session.String()))
 }
 
@@ -284,4 +299,16 @@ func (c *Communicator) CommandError() {
 
 func (c *Communicator) Hourglass() {
 	c.ReplyWithAndHourglass("Here is an hourglass")
+}
+
+func (c *Communicator) ShowPrivacyPolicy() {
+	c.ReplyWithParseMode(c.appVariables.PrivacyPolicy1, "html", true)
+}
+
+func (c *Communicator) PrivacySettingsUpdated() {
+	c.ReplyWith("Your privacy settings have been updated!")
+}
+
+func (c *Communicator) ShowLicenseNotice() {
+	c.ReplyWithParseMode(c.appVariables.OpenSource1, "html", true)
 }
