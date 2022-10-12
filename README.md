@@ -201,7 +201,7 @@ Using Docker CLI:
 docker build -t goforpomodoro .
 
 # Run container
-docker run -d --name goforopomodorobot -v <path-to-sqlite-database>:/app/data/go4pom_data.db -v <path-to-appsettings.toml>:/app/appsettings.toml goforpomodoro
+docker run -d --name goforopomodorobot -v <path to sqlite database>:/app/data/go4pom_data.db -v <path to appsettings.toml>:/app/appsettings.toml goforpomodoro
 ```
 
 Using Docker Compose:
@@ -211,5 +211,5 @@ Using Docker Compose:
 
 
 # Build and run container
-BOT_DATA_DIR=<path-to-bot-data-folder> docker-compose up -d
+BOT_DATA_DIR=<path to bot data folder> docker-compose up -d
 ```
