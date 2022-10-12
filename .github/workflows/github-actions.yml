@@ -6,6 +6,9 @@ on:
 jobs:
   build-and-deploy:
     runs-on: self-hosted
+    environment: production
+    env:
+      BOT_DATA_DIR: ${{ secrets.BOT_DATA_DIR }}
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
