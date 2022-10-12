@@ -190,10 +190,10 @@ go build cmd/GoforPomodoroBot/main.go
 
 ### Building (and running) the application with Docker
 
-You can build and run the application in a container with Docker.
-You can build the container image directly with Docker CLI or you can use Docker Compose.
+You can build and run the application in a container with Docker. You can build the container image directly with Docker CLI or you can use Docker Compose.
 
 Using Docker CLI:
+
 ```bash
 # Run all the following commands from the project's folder
 
@@ -205,9 +205,11 @@ docker run -d --name goforopomodorobot -v <path-to-sqlite-database>:/app/data/go
 ```
 
 Using Docker Compose:
+
 ```bash
 # Run the following command from the project's folder
 
+
 # Build and run container
-docker-compose up -d
+BOT_DATA_DIR=<path-to-bot-data-folder> docker-compose up -d
 ```
