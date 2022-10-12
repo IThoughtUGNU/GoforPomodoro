@@ -2,7 +2,7 @@ name: GoforPomodoro
 on: 
   push:
     branches:
-      - 'main'
+      - 'release'
 jobs:
   build-and-deploy:
     runs-on: self-hosted
