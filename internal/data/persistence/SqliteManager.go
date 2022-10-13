@@ -223,6 +223,12 @@ func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*
 		&active,
 	)
 
+	if scanErr != nil {
+		// log.Printf("[SqliteManager] ERROR IN SCANNING (%v)\n", scanErr.Error())
+
+		return nil, scanErr
+	}
+
 	if *chatId == 0 {
 		*chatId = _chatId
 	} else if *chatId != _chatId {
@@ -235,12 +241,6 @@ func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*
 
 	if endNextRestTimestamp != nil {
 		runningS.EndNextRestTimestamp = *endNextRestTimestamp
-	}
-
-	if scanErr != nil {
-		log.Printf("[SqliteManager] ERROR IN SCANNING (%v)\n", scanErr.Error())
-
-		return nil, scanErr
 	}
 
 	if subscribersText != "" {

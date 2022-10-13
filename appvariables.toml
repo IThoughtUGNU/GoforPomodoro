@@ -1,0 +1,19 @@
+# This privacy policy is just an example
+
+# The regulation of GDPR does not apply to purely personal activities
+
+PrivacyPolicyEnabled = false
+
+PrivacySettingsVersion = 1
+
+PrivacyPolicy1 = """<insert here your privacy policy>"""
+
+OpenSource1 = """Did you know that this bot is opensource? It is licensed \
+under AGPL 3.0. The official source code for this bot is available at
+\n\n
+https://github.com/IThoughtUGNU/GoforPomodoro
+\n\n
+You can read what the license consists at
+\n\n
+https://www.gnu.org/licenses/#AGPL
+"""

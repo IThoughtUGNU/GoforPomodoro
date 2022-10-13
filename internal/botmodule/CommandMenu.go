@@ -59,6 +59,7 @@ func CommandMenuLoop(
 
 	RestoreSessions(appState, appVariables, bot)
 
+	PrivacyPolicyEnabled := appVariables.PrivacyPolicyEnabled
 	privacyVersion := appVariables.PrivacySettingsVersion
 
 	updates := bot.GetUpdatesChan(u)
@@ -68,6 +69,8 @@ func CommandMenuLoop(
 
 			senderId := domain.ChatID(update.Message.From.ID)
 			chatId := domain.ChatID(update.Message.Chat.ID)
+
+			newChat := data.IsThisNewUser(appState, senderId)
 
 			if debugMode {
 				log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
@@ -90,26 +93,35 @@ func CommandMenuLoop(
 
 			communicator := GetCommunicator(appState, appVariables, chatId, bot)
 
-			// Check privacy policy agreement
-			userPrivacy, userPrivacyVersion := data.GetUserPrivacyPolicy(appState, chatId)
-			if userPrivacy.IsZero() || privacyVersion > userPrivacyVersion {
-				// The user has no privacy policy set (or it is too old).
+			if PrivacyPolicyEnabled {
+				// Check privacy policy agreement
+				userPrivacy, userPrivacyVersion := data.GetUserPrivacyPolicy(appState, chatId)
+				if userPrivacy.IsZero() || privacyVersion > userPrivacyVersion {
+					// The user has no privacy policy set (or it is too old).
 
-				// If the user is changing privacy now, we manage the change.
-				if inputprocess.IsPrivacySettingsCommand(command) {
-					switch command {
-					case "/accept_essential":
-						data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedEssential, privacyVersion)
-					case "/accept_all":
-						data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedAll, privacyVersion)
+					// If the user is changing privacy now, we manage the change.
+					if inputprocess.IsPrivacySettingsCommand(command) {
+						switch command {
+						case "/accept_essential":
+							data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedEssential, privacyVersion)
+						case "/accept_all":
+							data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedAll, privacyVersion)
+						}
+						communicator.PrivacySettingsUpdated()
+					} else {
+						// Otherwise, must show privacy policy
+						communicator.ShowPrivacyPolicy()
+						communicator.ShowLicenseNotice()
 					}
-					communicator.PrivacySettingsUpdated()
-				} else {
-					// Otherwise, must show privacy policy
-					communicator.ShowPrivacyPolicy()
-					communicator.ShowLicenseNotice()
+					continue
 				}
-				continue
+			} else {
+				if newChat {
+					communicator.Info()
+				}
+				if newChat {
+					communicator.Help()
+				}
 			}
 
 			switch command {

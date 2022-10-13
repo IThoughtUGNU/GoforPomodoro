@@ -240,7 +240,8 @@ func (c *Communicator) NewSession(session domain.SessionDefaultData) {
 }
 
 func (c *Communicator) Info() {
-	c.ReplyWith("I am a pomodoro bot written in Go.\n\nExperimental Version for new concurrency and persistence.")
+	c.ReplyWith("I am a pomodoro bot written in Go!")
+	c.ShowLicenseNotice()
 }
 
 func (c *Communicator) DataCleaned() {
@@ -248,10 +249,11 @@ func (c *Communicator) DataCleaned() {
 }
 
 func (c *Communicator) Help() {
-	c.ReplyWith("E.g.\n/25for4rest5 --> 4 🍅, 25 minutes + 5m for rest.\n" +
+	c.ReplyWith("Set a session (examples)\n/25for4rest5 --> 4 🍅, 25 minutes + 5m for rest.\n" +
 		"The latter is also achieved with /default.\n" +
 		"/30for4 --> 4 🍅, 30 minutes (default: +5m for rest).\n" +
 		"/25 --> 1 🍅, 25 minutes (single pomodoro sprint)\n\n" +
+		"Other commands:\n" +
 		"(/s) /start_sprint to start (if /autorun is set off)\n" +
 		"(/p) /pause to pause a session in run\n" +
 		"(/c) /cancel to cancel a session\n" +

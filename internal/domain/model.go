@@ -53,6 +53,7 @@ type AppVariables struct {
 	PrivacyPolicy1 string
 	OpenSource1    string
 	PrivacySettingsVersion
+	PrivacyPolicyEnabled bool
 }
 
 func (v AppVariables) IsPrivacyPolicyVersionUpdated(version PrivacySettingsVersion) bool {

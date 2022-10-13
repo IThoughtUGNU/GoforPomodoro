@@ -124,7 +124,7 @@ func OptionalOf[T any](value T) (opt Optional[T]) {
 }
 
 func OptionalOfNil[T any]() (opt Optional[T]) {
-	opt.isEmpty = false
+	opt.isEmpty = true
 
 	return
 }

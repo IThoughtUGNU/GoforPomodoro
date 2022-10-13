@@ -115,6 +115,24 @@ func GetUserPrivacyPolicy(
 	return settings.PrivacySettings, settings.PrivacySettingsVersion
 }
 
+func IsThisNewUser(appState *domain.AppState, chatId domain.ChatID) bool {
+	if appState.ReadSettings(chatId) == nil {
+		// Check if there is in the database, otherwise we create new settings in-place
+		if appState.PersistenceManager == nil {
+			return true
+		} else {
+			_, err := appState.PersistenceManager.GetChatSettings(chatId)
+
+			if err != nil {
+				return true
+			} else { // err == nil
+				return false
+			}
+		}
+	}
+	return false
+}
+
 func AdjustChatType(appState *domain.AppState, chatId domain.ChatID, senderId domain.ChatID, isGroup bool) {
 	defaultUserSettingsIfNeeded(appState, chatId)
 
