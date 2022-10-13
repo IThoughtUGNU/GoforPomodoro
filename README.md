@@ -132,7 +132,27 @@ be run. (It can also be the project directory), and type inside
 ```toml
 ApiToken = "<your api token>"
 BotName = "@<your bot username>"
+DebugMode = false
 ```
+
+### Setting other variables
+
+Set for instance open source notice
+
+```toml
+OpenSource1 = """Did you know that this bot is opensource? It is licensed \
+under AGPL 3.0. The official source code for this bot is available at
+\n\n
+https://github.com/IThoughtUGNU/GoforPomodoro
+\n\n
+You can read what the license consists at
+\n\n
+https://www.gnu.org/licenses/#AGPL
+"""
+```
+
+These variables are not a secret and therefore can be put in the repository.
+If they should be put out of repository, use `appsettings.toml`.
 
 ### Testing that the configuration is OK
 
