@@ -70,7 +70,7 @@ func CommandMenuLoop(
 			senderId := domain.ChatID(update.Message.From.ID)
 			chatId := domain.ChatID(update.Message.Chat.ID)
 
-			newChat := data.IsThisNewUser(appState, senderId)
+			newChat := data.IsThisNewUser(appState, chatId)
 
 			if debugMode {
 				log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
