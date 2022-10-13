@@ -137,7 +137,7 @@ DebugMode = false
 
 ### Setting other variables
 
-Set for instance open source notice
+Inside file `appvariables.toml`. Set for instance open source notice
 
 ```toml
 OpenSource1 = """Did you know that this bot is opensource? It is licensed \
