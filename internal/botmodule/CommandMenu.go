@@ -49,6 +49,8 @@ func CommandMenuLoop(
 		log.Panic(err)
 	}
 
+	settings.BotName = bot.Self.UserName
+
 	debugMode := settings.DebugMode
 	bot.Debug = debugMode
 

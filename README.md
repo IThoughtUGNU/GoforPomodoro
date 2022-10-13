@@ -131,7 +131,6 @@ be run. (It can also be the project directory), and type inside
 
 ```toml
 ApiToken = "<your api token>"
-BotName = "@<your bot username>"
 DebugMode = false
 ```
 
