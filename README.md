@@ -173,15 +173,17 @@ An output that tells that all is ok will look like
 
 ```
 Go for Pomodoro FOSS -- sanity check.
+--------------------------------------------------------------
+(Go runtime version: go1.19.2)
 
 - [✅] appsettings.toml file
 
 - [✅] Database connected
 
 - [✅] Telegram API connection
-     Authorized on account <your bot name>
+       Authorized on account <your bot name>
 
-
+--------------------------------------------------------------
 ```
 
 The bot can work also without a connected database, but in that case you will
