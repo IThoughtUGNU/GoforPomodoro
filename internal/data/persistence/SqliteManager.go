@@ -223,6 +223,8 @@ func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*
 		&active,
 	)
 
+	// log.Println("_chatId:", _chatId)
+
 	if scanErr != nil {
 		// log.Printf("[SqliteManager] ERROR IN SCANNING (%v)\n", scanErr.Error())
 
@@ -406,4 +408,12 @@ func (m *SqliteManager) GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *do
 		pairs = append(pairs, newPair)
 	}
 	return pairs, nil
+}
+
+func (m *SqliteManager) LockDB() {
+	m.dbLock.Lock()
+}
+
+func (m *SqliteManager) UnlockDB() {
+	m.dbLock.Unlock()
 }

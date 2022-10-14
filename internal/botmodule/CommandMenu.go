@@ -20,8 +20,10 @@ import (
 	"GoforPomodoro/internal/domain"
 	"GoforPomodoro/internal/inputprocess"
 	"GoforPomodoro/internal/sessionmanager"
+	"GoforPomodoro/internal/utils"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
+	"os"
 	"strings"
 )
 
@@ -66,16 +68,17 @@ func CommandMenuLoop(
 
 	updates := bot.GetUpdatesChan(u)
 
+mainLoop:
 	for update := range updates {
 		if update.Message != nil { // If we got a message
-
 			senderId := domain.ChatID(update.Message.From.ID)
 			chatId := domain.ChatID(update.Message.Chat.ID)
 
 			newChat := data.IsThisNewUser(appState, chatId)
 
 			if debugMode {
-				log.Printf("[%s] %s", update.Message.From.UserName, update.Message.Text)
+				log.Printf("[%s] %s\n", update.Message.From.UserName, update.Message.Text)
+				log.Printf("New chat? | %v\n", utils.YesNo(newChat))
 			}
 
 			msgText := update.Message.Text
@@ -110,6 +113,8 @@ func CommandMenuLoop(
 							data.SetUserPrivacyPolicy(appState, chatId, domain.AcceptedAll, privacyVersion)
 						}
 						communicator.PrivacySettingsUpdated()
+
+						data.DefaultUserSettingsIfNeeded(appState, chatId)
 					} else {
 						// Otherwise, must show privacy policy
 						communicator.ShowPrivacyPolicy()
@@ -120,13 +125,26 @@ func CommandMenuLoop(
 			} else {
 				if newChat {
 					communicator.Info()
-				}
-				if newChat {
 					communicator.Help()
+					data.DefaultUserSettingsIfNeeded(appState, chatId)
 				}
 			}
 
 			switch command {
+			// Admin commands
+			case "/shutdown":
+				isAdmin := utils.Contains(settings.AdminIds, senderId)
+				if isAdmin {
+					communicator.ReplyWith("Soft shutting down...")
+					data.PrepareForShutdown(
+						appState,
+						func() {
+							communicator.ReplyWith("DB lock acquired.")
+							os.Exit(0)
+						},
+					)
+					break mainLoop
+				}
 			// Group commands
 			case "/join":
 				if !isGroup {

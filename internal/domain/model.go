@@ -47,6 +47,7 @@ type AppSettings struct {
 	ApiToken  string
 	BotName   string
 	DebugMode bool
+	AdminIds  []ChatID
 }
 
 type AppVariables struct {
@@ -79,6 +80,9 @@ type PersistenceManager interface {
 	DeleteChatSettings(id ChatID) error
 
 	GetActiveChatSettings() ([]utils.Pair[ChatID, *Settings], error)
+
+	LockDB()
+	UnlockDB()
 }
 
 type AppState struct {

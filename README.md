@@ -132,6 +132,13 @@ be run. (It can also be the project directory), and type inside
 ```toml
 ApiToken = "<your api token>"
 DebugMode = false
+
+# AdminIds: Array of int64 (optional parameter)
+#
+# Should contain Telegram IDs of the users that you want to be admin for the bot
+# Allows to call commands as /shutdown (soft-shutdown of the bot) for the
+# inserted users.
+AdminIds = [<id>, ...]
 ```
 
 ### Setting other variables

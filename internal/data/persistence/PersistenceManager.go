@@ -43,4 +43,7 @@ type Manager interface {
 	DeleteChatSettings(id domain.ChatID) error
 
 	GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *domain.Settings], error)
+
+	LockDB()
+	UnlockDB()
 }

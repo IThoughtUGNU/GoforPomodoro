@@ -66,6 +66,10 @@ func LoadAppState(persistenceManager persistence.Manager, debugMode bool) (*doma
 	return appState, nil
 }
 
+func DefaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID) {
+	defaultUserSettingsIfNeeded(appState, chatId)
+}
+
 func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID) {
 	if appState.ReadSettings(chatId) == nil {
 		// Check if there is in the database, otherwise we create new settings in-place
@@ -77,12 +81,17 @@ func defaultUserSettingsIfNeeded(appState *domain.AppState, chatId domain.ChatID
 			chatSettings, err := appState.PersistenceManager.GetChatSettings(chatId)
 
 			if err != nil {
-				chatSettings := new(domain.Settings)
+				chatSettings = new(domain.Settings)
 				chatSettings.Autorun = true
 				appState.WriteSettings(chatId, chatSettings)
 			} else { // err == nil
-
 				appState.WriteSettings(chatId, chatSettings)
+			}
+
+			storeErr := appState.PersistenceManager.StoreChatSettings(chatId, chatSettings)
+
+			if storeErr != nil {
+				log.Printf("[defaultUserSettingsIfNeeded] Storing ERROR: %v\n", storeErr.Error())
 			}
 		}
 	}
@@ -123,6 +132,8 @@ func IsThisNewUser(appState *domain.AppState, chatId domain.ChatID) bool {
 		} else {
 			_, err := appState.PersistenceManager.GetChatSettings(chatId)
 
+			// log.Println("Settings:", settings)
+			// log.Println("Err:", err)
 			if err != nil {
 				return true
 			} else { // err == nil
@@ -332,4 +343,12 @@ func GetUserSessionRunning(appState *domain.AppState, chatId domain.ChatID, send
 		}
 	}
 	return sessionRunning
+}
+
+func PrepareForShutdown(appState *domain.AppState, callback func()) {
+	if appState.PersistenceManager != nil {
+		// We wait for all DB operations to complete
+		appState.PersistenceManager.LockDB()
+	}
+	callback()
 }

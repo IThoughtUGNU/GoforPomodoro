@@ -142,3 +142,11 @@ func (opt Optional[T]) GetValue() (value T, err error) {
 func (opt Optional[T]) IsEmpty() bool {
 	return opt.isEmpty
 }
+
+func YesNo(value bool) string {
+	if value {
+		return "Yes"
+	} else {
+		return "No"
+	}
+}
