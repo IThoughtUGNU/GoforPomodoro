@@ -44,7 +44,7 @@ func main() {
 	settings, err := data.LoadAppSettings()
 
 	var s string
-	if err != nil || (len(settings.ApiToken) == 0 || len(settings.BotName) == 0) {
+	if err != nil || (len(settings.ApiToken) == 0) {
 		s = errSymbol
 		noAppSettings = NoAppSettings
 	} else {
