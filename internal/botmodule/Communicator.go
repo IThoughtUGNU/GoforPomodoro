@@ -23,7 +23,9 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"log"
+	"math/rand"
 	"strings"
+	"time"
 )
 
 var simpleHourglassKeyboard = tgbotapi.NewInlineKeyboardMarkup(
@@ -155,12 +157,8 @@ func (c *Communicator) ReplyWithAndHourglassAndNotify(text string) {
 
 func (c *Communicator) SessionStarted(session *domain.Session, err error) {
 	if err == nil {
-		numberOfSprints := session.GetSprintDurationSet().ToInt()
-		sessionTime := session.GetPomodoroDurationSet().Seconds() * numberOfSprints
-		if numberOfSprints > 1 {
-			sessionTime += session.GetRestDurationSet().Seconds() * (numberOfSprints - 1)
-		}
-		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", utils.NiceTimeFormatting(sessionTime))
+		sessionTime := session.CalculateSessionTimeInSeconds()
+		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", utils.NiceTimeFormatting64(sessionTime))
 		c.ReplyWithAndHourglassAndNotify(replyStr)
 	} else {
 		c.ReplyWith("Session was not set.\nPlease set a session or use /default for classic 4x25m+25m.")
@@ -313,4 +311,15 @@ func (c *Communicator) PrivacySettingsUpdated() {
 
 func (c *Communicator) ShowLicenseNotice() {
 	c.ReplyWithParseMode(c.appVariables.OpenSource1, "html", true)
+}
+
+func (c *Communicator) ErrorSessionTooLong() {
+	tooLongMessages := [...]string{
+		"I don't have time for this, sorry.",
+		"That's too much time for a session that I can manage.",
+		"Bammer. Loooong session.",
+		"The session you specified lasts too long.",
+	}
+	rand.Seed(time.Now().UnixNano())
+	c.ReplyWith(tooLongMessages[rand.Intn(len(tooLongMessages))])
 }

@@ -368,16 +368,16 @@ func (s *Session) String() string {
 		fmt.Sprintf("\n\nCurrent session state: %s", s.State())
 }
 
-func (s SessionDefaultData) String() string {
-	if s.PomodoroDurationSet == 0 {
+func (sdd SessionDefaultData) String() string {
+	if sdd.PomodoroDurationSet == 0 {
 		return "No session"
 	}
 
 	var middleStr string
-	sprintDuration := s.SprintDurationSet
+	sprintDuration := sdd.SprintDurationSet
 
 	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
-		s.SprintDurationSet, s.PomodoroDurationSet/60, s.RestDurationSet/60) +
+		sdd.SprintDurationSet, sdd.PomodoroDurationSet/60, sdd.RestDurationSet/60) +
 		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
 		middleStr +
 		fmt.Sprintf("\n\nCurrent session state: Pending")
@@ -599,4 +599,22 @@ func (s *Session) EndNextSprintTimestamp() *time.Time {
 
 func (s *Session) EndNextRestTimestamp() *time.Time {
 	return s.endNextRestTimestamp
+}
+
+func (s *Session) CalculateSessionTimeInSeconds() int64 {
+	numberOfSprints := int64(s.GetSprintDurationSet().ToInt())
+	sessionTime := int64(s.GetPomodoroDurationSet().Seconds()) * numberOfSprints
+	if numberOfSprints > 1 {
+		sessionTime += int64(s.GetRestDurationSet().Seconds()) * (numberOfSprints - 1)
+	}
+	return sessionTime
+}
+
+func (sdd SessionDefaultData) CalculateSessionTimeInSeconds() int64 {
+	numberOfSprints := int64(sdd.SprintDurationSet)
+	sessionTime := int64(sdd.PomodoroDurationSet) * numberOfSprints
+	if numberOfSprints > 1 {
+		sessionTime += int64(sdd.RestDurationSet) * (numberOfSprints - 1)
+	}
+	return sessionTime
 }

@@ -22,7 +22,7 @@ import (
 	"time"
 )
 
-func NiceTimeFormatting(seconds int) string {
+func NiceTimeFormatting64(seconds int64) string {
 	if seconds > 60*60 {
 		// >1 hour
 		minutes := int(math.Ceil(float64(seconds) / 60.0))
@@ -47,6 +47,10 @@ func NiceTimeFormatting(seconds int) string {
 		// <=1 minute
 		return fmt.Sprintf("%d seconds", seconds)
 	}
+}
+
+func NiceTimeFormatting(seconds int) string {
+	return NiceTimeFormatting64(int64(seconds))
 }
 
 func In[T comparable](element T, array []T) bool {

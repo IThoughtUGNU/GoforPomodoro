@@ -21,6 +21,7 @@ import (
 	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
 	"os"
+	"runtime"
 )
 
 type ErrorType int
@@ -32,6 +33,8 @@ const (
 )
 
 func main() {
+	fmt.Printf("Go for Pomodoro FOSS -- sanity check.\n")
+	fmt.Println("--------------------------------------------------------------")
 	var noAppSettings ErrorType
 	var noDb ErrorType
 	var noApiConn ErrorType
@@ -39,7 +42,7 @@ func main() {
 	okSymbol := "✅"
 	errSymbol := "❌"
 
-	fmt.Printf("Go for Pomodoro FOSS -- sanity check.\n\n")
+	fmt.Printf("(Go runtime version: %s)\n\n", runtime.Version())
 
 	settings, err := data.LoadAppSettings()
 
@@ -68,10 +71,10 @@ func main() {
 	}
 	fmt.Printf("- [%v] Database connected\n", s)
 	if dbErr != nil {
-		fmt.Printf("      A database instance is not mandatory. The bot can also run without any\n" +
-			"      persistence. But keep in mind that doing so will make lose all data and\n" +
-			"      irremediably lose all the sessions running after the application is\n" +
-			"      shutted down.\n")
+		fmt.Printf("       A database instance is not mandatory. The bot can also run without any\n" +
+			"       persistence. But keep in mind that doing so will make lose all data and\n" +
+			"       irremediably lose all the sessions running after the application is\n" +
+			"       shutted down.\n")
 	}
 	fmt.Println()
 
@@ -85,13 +88,14 @@ func main() {
 	fmt.Printf("- [%v] Telegram API connection\n", s)
 	if err == nil {
 		fmt.Printf(
-			"     Authorized on account %s\n", bot.Self.UserName)
+			"       Authorized on account %s\n", bot.Self.UserName)
 	} else {
 		fmt.Println(
-			"      No account authorized. The application will not work without a valid API\n" +
-				"      key and connection.")
+			"       No account authorized. The application will not work without a valid API\n" +
+				"       key and connection.")
 	}
 	fmt.Println()
+	fmt.Println("--------------------------------------------------------------")
 	fmt.Println()
 
 	os.Exit(int(noAppSettings | noDb | noApiConn))
