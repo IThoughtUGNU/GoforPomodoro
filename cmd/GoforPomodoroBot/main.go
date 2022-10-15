@@ -51,5 +51,17 @@ func main() {
 
 	fmt.Printf("Hello from Go for Pomodoro!\n\n(debug mode set to: %v)\n\n", debugMode)
 
+	// serverActionChannel := make(chan domain.DispatchServerAction)
+
+	// Listen for /shutdown
+	if settings.ListenAddressPrivate != "" && settings.ListenPortPrivate != 0 {
+		go botmodule.ListenPrivateHTTP(
+			appState,
+			settings.ListenAddressPrivate,
+			settings.ListenPortPrivate,
+		)
+	}
+
+	// Start the actual bot
 	botmodule.CommandMenuLoop(settings, appVariables, appState)
 }

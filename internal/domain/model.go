@@ -44,10 +44,12 @@ func (privacy PrivacySettingsType) HasAcceptedAll() bool {
 }
 
 type AppSettings struct {
-	ApiToken  string
-	BotName   string
-	DebugMode bool
-	AdminIds  []ChatID
+	ApiToken             string
+	BotName              string
+	DebugMode            bool
+	AdminIds             []ChatID
+	ListenAddressPrivate string
+	ListenPortPrivate    int
 }
 
 type AppVariables struct {
@@ -112,3 +114,7 @@ func (appState *AppState) WriteSettings(
 
 	appState.UsersSettings[chatId] = settings
 }
+
+//type DispatchServerAction struct {
+//	Shutdown bool
+//}

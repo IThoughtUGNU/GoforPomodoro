@@ -21,8 +21,11 @@ import (
 	"GoforPomodoro/internal/inputprocess"
 	"GoforPomodoro/internal/sessionmanager"
 	"GoforPomodoro/internal/utils"
+	"fmt"
 	tgbotapi "github.com/go-telegram-bot-api/telegram-bot-api/v5"
+	"io"
 	"log"
+	"net/http"
 	"os"
 	"strings"
 )
@@ -40,6 +43,36 @@ var numericKeyboard = tgbotapi.NewInlineKeyboardMarkup(
 		tgbotapi.NewInlineKeyboardButtonData("6", "6"),
 	),
 )*/
+
+func ListenPrivateHTTP(appState *domain.AppState, address string, port int) {
+	http.HandleFunc("/hello", getHello)
+	http.HandleFunc("/shutdown", func(w http.ResponseWriter, r *http.Request) {
+		// dispatchServerAction <- domain.DispatchServerAction{Shutdown: true}
+		log.Println("[ListenPrivateHTTP] Shutdown request from HTTP.")
+		data.PrepareForShutdown(
+			appState,
+			func() {
+				log.Println("[ListenPrivateHTTP] DB lock acquired.")
+				_, _ = io.WriteString(w, "shutting down\n")
+				go os.Exit(0)
+			},
+		)
+	})
+
+	err := http.ListenAndServe(fmt.Sprintf("%s:%d", address, port), nil)
+	if err != nil {
+		log.Fatal(err)
+	}
+}
+
+func getHello(w http.ResponseWriter, r *http.Request) {
+	_ = r
+	fmt.Printf("got /hello request\n")
+	_, err := io.WriteString(w, "Hello, HTTP!\n")
+	if err != nil {
+		log.Println("getHello err:", err)
+	}
+}
 
 func CommandMenuLoop(
 	settings *domain.AppSettings,
