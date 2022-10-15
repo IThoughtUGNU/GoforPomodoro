@@ -218,6 +218,11 @@ mainLoop:
 			default:
 				sessionDataOpt := inputprocess.ParsePatternToSession(nil, msgText)
 				sessionData, err := sessionDataOpt.GetValue()
+				if err != nil {
+					// Session wasn't parsed
+					continue
+				}
+				_, err = inputprocess.ValidateSessionParsed(sessionData)
 				if err == nil {
 					data.UpdateDefaultUserSession(appState, chatId, senderId, sessionData)
 					communicator.NewSession(sessionData)
@@ -225,6 +230,8 @@ mainLoop:
 					if autorun {
 						ActionStartSprint(senderId, chatId, appState, communicator)
 					}
+				} else {
+					communicator.ErrorSessionTooLong()
 				}
 			}
 		} else if update.CallbackQuery != nil {
