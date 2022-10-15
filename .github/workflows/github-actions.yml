@@ -9,6 +9,10 @@ jobs:
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
+      - name: Copy appvariables.toml in data folder
+        run: |
+          cd ${{ github.workspace }}
+          cp appvariables.toml ${{ secrets.BOT_DATA_DIR }}
       - name: Build & Deploy
         run: |
           cd ${{ github.workspace }}
