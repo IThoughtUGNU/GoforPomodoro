@@ -8,6 +8,6 @@ FROM ubuntu:latest
 WORKDIR /app
 COPY --from=build-stage /build/GoforPomodoroCheck ./
 COPY --from=build-stage /build/GoforPomodoroBot ./
-RUN apt update && apt install ca-certificates
+RUN apt update && apt install -y ca-certificates
 ENTRYPOINT [ "bash", "-c", "if ./GoforPomodoroCheck ; then ./GoforPomodoroBot ; fi" ]
 
