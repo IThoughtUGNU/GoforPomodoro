@@ -2,7 +2,10 @@ version: "3"
 services:
   goforpomodoro:
     image: goforpomodoro
-    build: .
+    build:
+      context: .
+      args:
+        INTERNAL_SERVER_PORT: ${INTERNAL_SERVER_PORT}
     container_name: goforpomodorobot
     volumes:
       - ${BOT_DATA_DIR}data/go4pom_data.db:/app/data/go4pom_data.db
