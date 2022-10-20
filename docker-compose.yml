@@ -11,3 +11,13 @@ services:
       - ${BOT_DATA_DIR}data/go4pom_data.db:/app/data/go4pom_data.db
       - ${BOT_DATA_DIR}appsettings.toml:/app/appsettings.toml
       - ${BOT_DATA_DIR}appvariables.toml:/app/appvariables.toml
+    networks:
+      default:
+        ipv4_address: ${CONTAINER_IP}
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${SUBNET}
