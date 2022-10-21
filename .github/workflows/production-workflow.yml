@@ -6,6 +6,7 @@ on:
 jobs:
   build-and-deploy:
     runs-on: self-hosted
+    environment: production
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
@@ -16,4 +17,4 @@ jobs:
       - name: Build & Deploy
         run: |
           cd ${{ github.workspace }}
-          BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} INTERNAL_SERVER_PORT=${{ secrets.INTERNAL_SERVER_PORT }} docker-compose up -d --build
+          BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} INTERNAL_SERVER_PORT=${{ secrets.INTERNAL_SERVER_PORT }} CONTAINER_IP=${{ secrets.CONTAINER_IP }} SUBNET=${{ secrets.SUBNET }} docker-compose up -d --build
