@@ -2,9 +2,22 @@ version: "3"
 services:
   goforpomodoro:
     image: goforpomodoro
-    build: .
-    container_name: goforpomodorobot
+    build:
+      context: .
+      args:
+        INTERNAL_SERVER_PORT: ${INTERNAL_SERVER_PORT}
+    container_name: goforpomodorobot${CONTAINER_NAME_SUFFIX}
     volumes:
       - ${BOT_DATA_DIR}data/go4pom_data.db:/app/data/go4pom_data.db
       - ${BOT_DATA_DIR}appsettings.toml:/app/appsettings.toml
       - ${BOT_DATA_DIR}appvariables.toml:/app/appvariables.toml
+    networks:
+      default:
+        ipv4_address: ${CONTAINER_IP}
+
+networks:
+  default:
+    driver: bridge
+    ipam:
+      config:
+        - subnet: ${SUBNET}
