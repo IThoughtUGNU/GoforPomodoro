@@ -17,4 +17,4 @@ jobs:
       - name: Build & Deploy
         run: |
           cd ${{ github.workspace }}
-          BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} INTERNAL_SERVER_PORT=${{ secrets.INTERNAL_SERVER_PORT }} CONTAINER_IP=${{ secrets.CONTAINER_IP }} SUBNET="${{ secrets.SUBNET }}" CONTAINER_NAME_SUFFIX="-dev" docker-compose up -d --build
+          BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} INTERNAL_SERVER_PORT=${{ secrets.INTERNAL_SERVER_PORT }} CONTAINER_IP=${{ secrets.CONTAINER_IP }} SUBNET='${{ secrets.SUBNET }}' CONTAINER_NAME_SUFFIX='-dev' docker-compose up -d --build
