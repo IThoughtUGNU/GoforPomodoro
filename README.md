@@ -131,15 +131,35 @@ be run. (It can also be the project directory), and type inside
 
 ```toml
 ApiToken = "<your api token>"
-DebugMode = false
 
-# AdminIds: Array of int64 (optional parameter)
-#
-# Should contain Telegram IDs of the users that you want to be admin for the bot
-# Allows to call commands as /shutdown (soft-shutdown of the bot) for the
-# inserted users.
-AdminIds = [<id>, ...]
+DebugMode = false # optional parameter
+
+AdminIds = [] # optional parameter
+
+ListenAddressPrivate = "127.0.0.1" # optional parameter
+ListenPortPrivate = 8080 # optional parameter
+
 ```
+
+* `ApiToken` should contain the token from Telegram/BotFather.
+**_Mandatory parameter_.**
+
+* `DebugMode` is a boolean attribute; when `true`, it logs more information of 
+what is happening with the bot. _Optional parameter_.
+
+* `AdminIds` is an array of `int64`. Should contain the IDs of the admins of
+the bot. Allows for commands like `/shutdown` in chat to (gracefully)
+shutdown the bot. _Optional parameter_.
+
+* `ListenAddressPrivate` and `ListenPortPrivate` are attributes to set up
+the private server for the bot. With the example configuration, you would
+(gracefully) shutdown the bot with
+    
+    ```bash
+    curl http://localhost:8080/shutdown
+    ```
+
+    _Optional parameters_.
 
 ### Setting other variables
 
@@ -173,15 +193,17 @@ An output that tells that all is ok will look like
 
 ```
 Go for Pomodoro FOSS -- sanity check.
+--------------------------------------------------------------
+(Go runtime version: go1.19.2)
 
 - [✅] appsettings.toml file
 
 - [✅] Database connected
 
 - [✅] Telegram API connection
-     Authorized on account <your bot name>
+       Authorized on account <your bot name>
 
-
+--------------------------------------------------------------
 ```
 
 The bot can work also without a connected database, but in that case you will

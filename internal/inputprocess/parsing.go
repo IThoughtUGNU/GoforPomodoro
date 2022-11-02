@@ -18,6 +18,7 @@ package inputprocess
 import (
 	"GoforPomodoro/internal/domain"
 	"GoforPomodoro/internal/utils"
+	"errors"
 	"regexp"
 	"strconv"
 	"strings"
@@ -56,6 +57,19 @@ func CommandFrom(appSettings *domain.AppSettings, text string) string {
 
 func ParametersFrom(text string) []string {
 	return strings.Split(text, " ")[1:]
+}
+
+func ValidateSessionParsed(sessionData domain.SessionDefaultData) (domain.SessionDefaultData, error) {
+	// The maximum time for a session shall not exceed 48 hours
+	var limit int64 = 48 * 60 * 60
+
+	sessionTime := sessionData.CalculateSessionTimeInSeconds()
+
+	if sessionTime > limit {
+		return sessionData, errors.New("this session lasts too long")
+	} else {
+		return sessionData, nil
+	}
 }
 
 func ParsePatternToSession(r *regexp.Regexp, text string) utils.Optional[domain.SessionDefaultData] {
