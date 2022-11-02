@@ -12,12 +12,12 @@ services:
       - ${BOT_DATA_DIR}appsettings.toml:/app/appsettings.toml
       - ${BOT_DATA_DIR}appvariables.toml:/app/appvariables.toml
     networks:
-      default:
+      goforpomodorobot:
         ipv4_address: ${CONTAINER_IP}
     restart: always
 
 networks:
-  default:
+  goforpomodorobot:
     driver: bridge
     ipam:
       config:
