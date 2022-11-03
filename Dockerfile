@@ -10,6 +10,6 @@ ARG INTERNAL_SERVER_PORT
 WORKDIR /app
 COPY --from=build-stage /build/GoforPomodoroCheck ./
 COPY --from=build-stage /build/GoforPomodoroBot ./
-RUN --mount=type=cache,target= apt update && apt install -y ca-certificates
+RUN --mount=type=cache,target=/var/cache/apt apt update && apt install -y ca-certificates
 ENTRYPOINT [ "bash", "-c", "if ./GoforPomodoroCheck ; then ./GoforPomodoroBot ; fi" ]
 EXPOSE $INTERNAL_SERVER_PORT
