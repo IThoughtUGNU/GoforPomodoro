@@ -2,10 +2,11 @@ name: GoforPomodoro
 on: 
   push:
     branches:
-      - 'release'
+      - 'main'
 jobs:
   build-and-deploy:
     runs-on: self-hosted
+    environment: development
     steps:
       - name: Check out repository code
         uses: actions/checkout@v3
@@ -16,4 +17,4 @@ jobs:
       - name: Build & Deploy
         run: |
           cd ${{ github.workspace }}
-          BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} docker-compose up -d --build
+          DOCKER_BUILDKIT=1 COMPOSE_PROJECT_NAME=development BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} INTERNAL_SERVER_PORT=${{ secrets.INTERNAL_SERVER_PORT }} CONTAINER_IP=${{ secrets.CONTAINER_IP }} SUBNET='${{ secrets.SUBNET }}' CONTAINER_NAME_SUFFIX='-dev' docker-compose up -d --build

@@ -1,0 +1,20 @@
+name: GoforPomodoro
+on: 
+  push:
+    branches:
+      - 'release'
+jobs:
+  build-and-deploy:
+    runs-on: self-hosted
+    environment: production
+    steps:
+      - name: Check out repository code
+        uses: actions/checkout@v3
+      - name: Copy appvariables.toml in data folder
+        run: |
+          cd ${{ github.workspace }}
+          cp appvariables.toml ${{ secrets.BOT_DATA_DIR }}
+      - name: Build & Deploy
+        run: |
+          cd ${{ github.workspace }}
+          DOCKER_BUILDKIT=1 COMPOSE_PROJECT_NAME=production BOT_DATA_DIR=${{ secrets.BOT_DATA_DIR }} INTERNAL_SERVER_PORT=${{ secrets.INTERNAL_SERVER_PORT }} CONTAINER_IP=${{ secrets.CONTAINER_IP }} SUBNET='${{ secrets.SUBNET }}' docker-compose up -d --build
