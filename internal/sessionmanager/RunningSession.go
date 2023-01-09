@@ -119,12 +119,13 @@ mainLoop:
 			if !isRest && currentSession.HasSprintEndTimePassed() {
 				currentSession.DecreaseSprintDuration()
 
-				if currentSession.GetSprintDuration() < 0 {
+				// if currentSession.GetSprintDuration() < 0 {
+				if currentSession.SprintDurationFinished() {
 					currentSession.WritingActionChannel() <- domain.DispatchAction{Finished: true}
 					continue mainLoop
 				}
 
-				// if SprintDuration still >= 0, we have rest now
+				// if SprintDuration still >= 0 or is UnspecifiedSprintCardinality, we have rest now
 				currentSession.WritingActionChannel() <- domain.DispatchAction{RestStarted: true}
 				continue mainLoop
 			} else if isRest && currentSession.HasRestEndTimePassed() {

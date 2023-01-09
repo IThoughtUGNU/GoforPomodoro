@@ -63,12 +63,13 @@ func (c *Communicator) subscribersAsString() string {
 
 	errors := 0
 	for _, id := range c.Subscribers {
-		subscriberName, err := bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: int64(id)}})
+		subscriberChat, err := bot.GetChat(tgbotapi.ChatInfoConfig{ChatConfig: tgbotapi.ChatConfig{ChatID: int64(id)}})
 		if err != nil {
 			errors += 1
+			continue
 		}
 		sb.WriteString("@")
-		sb.WriteString(subscriberName.UserName)
+		sb.WriteString(subscriberChat.UserName)
 		sb.WriteString(" ")
 	}
 
@@ -158,7 +159,13 @@ func (c *Communicator) ReplyWithAndHourglassAndNotify(text string) {
 func (c *Communicator) SessionStarted(session *domain.Session, err error) {
 	if err == nil {
 		sessionTime := session.CalculateSessionTimeInSeconds()
-		replyStr := fmt.Sprintf("This session will last for %s\n\nSession started!", utils.NiceTimeFormatting64(sessionTime))
+		var replyStr string
+
+		if session.IsSprintDurationUnspecified() {
+			replyStr = "This session will go as long as you want to keep focusing."
+		} else {
+			replyStr = fmt.Sprintf("This session will last for %s\n\nSession started!", utils.NiceTimeFormatting64(sessionTime))
+		}
 		c.ReplyWithAndHourglassAndNotify(replyStr)
 	} else {
 		c.ReplyWith("Session was not set.\nPlease set a session or use /default for classic 4x25m+25m.")
@@ -250,7 +257,8 @@ func (c *Communicator) Help() {
 	c.ReplyWith("Set a session (examples)\n/25for4rest5 --> 4 🍅, 25 minutes + 5m for rest.\n" +
 		"The latter is also achieved with /default.\n" +
 		"/30for4 --> 4 🍅, 30 minutes (default: +5m for rest).\n" +
-		"/25 --> 1 🍅, 25 minutes (single pomodoro sprint)\n\n" +
+		"/25 --> 1 🍅, 25 minutes (single pomodoro sprint)\n" +
+		"/30forXrest7 --> unspecified no. of 🍅s, 30 minutes + 7m for rest.\n\n" +
 		"Other commands:\n" +
 		"(/s) /start_sprint to start (if /autorun is set off)\n" +
 		"(/p) /pause to pause a session in run\n" +

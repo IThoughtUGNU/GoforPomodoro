@@ -19,6 +19,31 @@ import (
 	"testing"
 )
 
+func TestIsCapitalizedLetter(t *testing.T) {
+
+	for _, c := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+		if !IsCapitalizedLetter(c) {
+			t.Fatalf("%c is a capitalized letter (returned false).", c)
+		}
+	}
+	for _, c := range "0123456789abcdefghijklmnopqrstuvwxyz;" {
+		if IsCapitalizedLetter(c) {
+			t.Fatalf("%c is NOT a capitalized letter (returned true).", c)
+		}
+	}
+
+	for _, c := range "ABCDEFGHIJKLMNOPQRSTUVWXYZ" {
+		if !IsCapitalizedLetterStr(string(c)) {
+			t.Fatalf("%c is a capitalized letter (returned false).", c)
+		}
+	}
+	for _, c := range "0123456789abcdefghijklmnopqrstuvwxyz;" {
+		if IsCapitalizedLetterStr(string(c)) {
+			t.Fatalf("%c is NOT a capitalized letter (returned true).", c)
+		}
+	}
+}
+
 func TestAfterRemoveEl(t *testing.T) {
 	var st_ = [...]string{"ciao", "mondo"}
 	var st []string = st_[:]

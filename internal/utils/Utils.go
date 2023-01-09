@@ -154,3 +154,17 @@ func YesNo(value bool) string {
 		return "No"
 	}
 }
+
+func IsCapitalizedLetter(c rune) bool {
+	return 'A' <= c && c <= 'Z'
+}
+
+func IsCapitalizedLetterStr(str string) bool {
+	if len(str) != 1 {
+		return false
+	}
+	for _, c := range str {
+		return IsCapitalizedLetter(c)
+	}
+	return false
+}

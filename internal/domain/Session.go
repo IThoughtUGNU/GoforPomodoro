@@ -35,6 +35,9 @@ type SprintDuration int
 type PomodoroDuration int64
 type RestDuration int64
 
+const UnspecifiedSprintCardinality = -100
+const DefaultRestTime = 5 * 60
+
 func (d SprintDuration) ToInt() int {
 	return int(d)
 }
@@ -267,6 +270,15 @@ func (s *Session) GetSprintDuration() SprintDuration {
 	return s.data.SprintDuration
 }
 
+func (s *Session) SprintDurationFinished() bool {
+	return s.data.SprintDuration > UnspecifiedSprintCardinality &&
+		s.data.SprintDuration < 0
+}
+
+func (s *Session) IsSprintDurationUnspecified() bool {
+	return s.data.SprintDuration <= UnspecifiedSprintCardinality
+}
+
 // GetSprintDurationSet returns how many sprints the session should have
 // (independently of how many remain)
 func (s *Session) GetSprintDurationSet() SprintDuration {
@@ -361,9 +373,19 @@ func (s *Session) String() string {
 		middleStr = fmt.Sprintf("\nTime for current pomodoro remaining: %s", utils.NiceTimeFormatting(s.GetPomodoroDuration().Seconds()))
 	}
 
-	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
-		s.GetSprintDurationSet(), s.GetPomodoroDurationSet()/60, s.GetRestDurationSet()/60) +
-		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
+	var sprintDurationSetStr string
+	var pomodorosRemainingStr string
+	if s.IsSprintDurationUnspecified() {
+		pomodorosRemainingStr = "Unspecified"
+		sprintDurationSetStr = "X"
+	} else {
+		pomodorosRemainingStr = fmt.Sprintf("%d", sprintDuration)
+		sprintDurationSetStr = fmt.Sprintf("%d", s.GetSprintDurationSet())
+	}
+
+	return fmt.Sprintf("Session of %s🍅 x %dm + %dm",
+		sprintDurationSetStr, s.GetPomodoroDurationSet()/60, s.GetRestDurationSet()/60) +
+		fmt.Sprintf("\nPomodoros remaining: %s", pomodorosRemainingStr) +
 		middleStr +
 		fmt.Sprintf("\n\nCurrent session state: %s", s.State())
 }
@@ -376,9 +398,19 @@ func (sdd SessionDefaultData) String() string {
 	var middleStr string
 	sprintDuration := sdd.SprintDurationSet
 
-	return fmt.Sprintf("Session of %d🍅 x %dm + %dm",
-		sdd.SprintDurationSet, sdd.PomodoroDurationSet/60, sdd.RestDurationSet/60) +
-		fmt.Sprintf("\nPomodoros remaining: %d", sprintDuration) +
+	var sprintDurationSetStr string
+	var pomodorosRemainingStr string
+	if sdd.SprintDurationSet <= UnspecifiedSprintCardinality {
+		pomodorosRemainingStr = "Unspecified"
+		sprintDurationSetStr = "X"
+	} else {
+		pomodorosRemainingStr = fmt.Sprintf("%d", sprintDuration)
+		sprintDurationSetStr = fmt.Sprintf("%d", sdd.SprintDurationSet)
+	}
+
+	return fmt.Sprintf("Session of %s🍅 x %dm + %dm",
+		sprintDurationSetStr, sdd.PomodoroDurationSet/60, sdd.RestDurationSet/60) +
+		fmt.Sprintf("\nPomodoros remaining: %s", pomodorosRemainingStr) +
 		middleStr +
 		fmt.Sprintf("\n\nCurrent session state: Pending")
 }
@@ -555,6 +587,10 @@ func (s *Session) RestFinished() {
 // and only one goroutine. DecreaseSprintDuration() call is internal to such
 // goroutine, therefore, it should not happen elsewhere.
 func (s *Session) DecreaseSprintDuration() {
+	if s.data.SprintDuration == UnspecifiedSprintCardinality {
+		return
+	}
+
 	s.data.SprintDuration -= 1
 }
 

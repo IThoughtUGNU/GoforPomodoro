@@ -24,12 +24,12 @@ import (
 	"strings"
 )
 
-const BasicPattern = `\/([1-9]\d*)(for([1-9]\d*)(rest([1-9]\d*))?)?` // `\/([1-9]\d*)`
+const BasicPattern = `\/([1-9]\d*)(for([A-Z]|([1-9]\d*))(rest([1-9]\d*))?)?` // `\/([1-9]\d*)`
 
 const (
 	MinutesGroup     = 1
 	CardinalityGroup = 3
-	RestGroup        = 5
+	RestGroup        = 6
 )
 
 var privacySettingsCommands = "/accept_all::/accept_essential"
@@ -94,12 +94,22 @@ func ParsePatternToSession(r *regexp.Regexp, text string) utils.Optional[domain.
 		sessionDefaultData.PomodoroDurationSet = domain.PomodoroDuration(pomDuration * 60) // time from minutes to seconds.
 
 		// Other parameters are optional
-		sprintDuration, err := strconv.Atoi(v[CardinalityGroup])
-		if err == nil {
-			sessionDefaultData.SprintDurationSet = domain.SprintDuration(sprintDuration)
+		cardinality := v[CardinalityGroup]
+		if utils.IsCapitalizedLetterStr(cardinality) {
+			// A capitalized letter was provided
+			sessionDefaultData.SprintDurationSet = domain.UnspecifiedSprintCardinality
 
 			// Default 5 minutes of rest duration in case user did not specify.
-			sessionDefaultData.RestDurationSet = 5 * 60
+			sessionDefaultData.RestDurationSet = domain.DefaultRestTime
+		} else {
+			// A number or else was provided
+			sprintDuration, err := strconv.Atoi(v[CardinalityGroup])
+			if err == nil {
+				sessionDefaultData.SprintDurationSet = domain.SprintDuration(sprintDuration)
+
+				// Default 5 minutes of rest duration in case user did not specify.
+				sessionDefaultData.RestDurationSet = domain.DefaultRestTime
+			}
 		}
 
 		restDuration, err := strconv.Atoi(v[RestGroup])
