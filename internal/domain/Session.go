@@ -433,7 +433,7 @@ func (s *Session) LeftTimeMessage() string {
 
 func (s *Session) IsStopped() bool {
 	if s.GetPomodoroDuration() <= 0 ||
-		s.GetSprintDuration() < 0 ||
+		(!s.IsSprintDurationUnspecified() && s.GetSprintDuration() < 0) ||
 		s.data.IsPaused ||
 		s.data.IsCancel ||
 		s.data.IsFinished {
