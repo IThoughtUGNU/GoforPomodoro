@@ -229,9 +229,7 @@ mainLoop:
 				err := sessionmanager.PauseSession(session)
 				communicator.SessionPaused(err, *session)
 			case "/c", "/cancel":
-				session := data.GetUserSessionRunning(appState, chatId, senderId)
-				err := sessionmanager.CancelSession(session)
-				communicator.SessionCanceled(err, *session)
+				ActionCancelSprint(senderId, chatId, appState, communicator)
 			case "/resume":
 				ActionResumeSprint(senderId, chatId, appState, communicator)
 			case "/d", "/default":

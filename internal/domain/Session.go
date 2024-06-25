@@ -298,7 +298,7 @@ func DefaultSession() SessionDefaultData {
 	return SessionDefaultData{
 		SprintDurationSet:   4,
 		PomodoroDurationSet: 25 * 60,
-		RestDurationSet:     25 * 60,
+		RestDurationSet:     5 * 60,
 	}
 }
 

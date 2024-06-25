@@ -38,6 +38,25 @@ func ActionRestoreSprint(
 	)
 }
 
+func ActionCancelSprint(
+	senderId domain.ChatID,
+	chatId domain.ChatID,
+	appState *domain.AppState,
+	communicator *Communicator,
+) {
+	session := data.GetUserSessionRunning(appState, chatId, senderId)
+
+	var err error
+	if !session.IsPaused() {
+		err = sessionmanager.CancelSession(session)
+	} else {
+		session.Cancel()
+		communicator.SessionFinishedHandler(chatId, session, sessionmanager.PomodoroCanceled)
+	}
+
+	communicator.SessionCanceled(err, *session)
+}
+
 func ActionResumeSprint(
 	senderId domain.ChatID,
 	chatId domain.ChatID,

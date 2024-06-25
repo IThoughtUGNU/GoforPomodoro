@@ -42,11 +42,123 @@ type SqliteManager struct {
 
 	// deleteChatSettingsItem 1 parameter (chat_id)
 	deleteChatSettingsItem *sql.Stmt
+
+	requestChan chan interface{}
 }
 
 var _ Manager = &SqliteManager{}
 
-// var _ Manager = SqliteManager{}
+func NewSqliteManager(db *sql.DB, getChatSettingsItem, getActiveChatsSettings, storeChatSettingsItem, deleteChatSettingsItem *sql.Stmt) *SqliteManager {
+	manager := &SqliteManager{
+		db:                     db,
+		getChatSettingsItem:    getChatSettingsItem,
+		getActiveChatsSettings: getActiveChatsSettings,
+		upsertChatSettingsItem: storeChatSettingsItem,
+		deleteChatSettingsItem: deleteChatSettingsItem,
+		requestChan:            make(chan interface{}),
+	}
+	go manager.run()
+	return manager
+}
+
+type GetChatSettingsRequest struct {
+	chatId       domain.ChatID
+	responseChan chan GetChatSettingsResponse
+}
+
+type GetChatSettingsResponse struct {
+	settings *domain.Settings
+	err      error
+}
+
+type StoreChatSettingsRequest struct {
+	id           domain.ChatID
+	settings     *domain.Settings
+	responseChan chan error
+}
+
+type DeleteChatSettingsRequest struct {
+	id           domain.ChatID
+	responseChan chan error
+}
+
+type GetActiveChatSettingsRequest struct {
+	responseChan chan GetActiveChatSettingsResponse
+}
+
+type GetActiveChatSettingsResponse struct {
+	settings []utils.Pair[domain.ChatID, *domain.Settings]
+	err      error
+}
+
+// Ensure that there is only a single SqliteManager at a time running for the same DB.
+// This channeled approach is designed to avoid locking/unlocking of resources
+// No more than one instance at a time should access to the DB.
+func (m *SqliteManager) run() {
+	for req := range m.requestChan {
+		switch r := req.(type) {
+		case GetChatSettingsRequest:
+			row := m.getChatSettingsItem.QueryRow(r.chatId)
+			settings, err := m.getChatSettings(&r.chatId, row)
+			r.responseChan <- GetChatSettingsResponse{settings: settings, err: err}
+		case StoreChatSettingsRequest:
+			err := m.storeChatSettings(r.id, r.settings)
+			r.responseChan <- err
+		case DeleteChatSettingsRequest:
+			err := m.deleteChatSettings(r.id)
+			r.responseChan <- err
+		case GetActiveChatSettingsRequest:
+			settings, err := m.getActiveChatSettings()
+			r.responseChan <- GetActiveChatSettingsResponse{settings: settings, err: err}
+		}
+	}
+}
+
+func (m *SqliteManager) GetChatSettings(chatId domain.ChatID) (*domain.Settings, error) {
+	responseChan := make(chan GetChatSettingsResponse)
+	request := GetChatSettingsRequest{
+		chatId:       chatId,
+		responseChan: responseChan,
+	}
+	m.requestChan <- request
+	response := <-responseChan
+	return response.settings, response.err
+}
+
+func (m *SqliteManager) StoreChatSettings(id domain.ChatID, settings *domain.Settings) error {
+	responseChan := make(chan error)
+	request := StoreChatSettingsRequest{
+		id:           id,
+		settings:     settings,
+		responseChan: responseChan,
+	}
+	m.requestChan <- request
+	return <-responseChan
+}
+
+func (m *SqliteManager) DeleteChatSettings(id domain.ChatID) error {
+	responseChan := make(chan error)
+	request := DeleteChatSettingsRequest{
+		id:           id,
+		responseChan: responseChan,
+	}
+	m.requestChan <- request
+	return <-responseChan
+}
+
+func (m *SqliteManager) GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *domain.Settings], error) {
+	print("GetActiveChatSettings()")
+	responseChan := make(chan GetActiveChatSettingsResponse)
+	request := GetActiveChatSettingsRequest{
+		responseChan: responseChan,
+	}
+	print("GetActiveChatSettings -- before request")
+	m.requestChan <- request
+	print("GetActiveChatSettings -- after request / before response")
+	response := <-responseChan
+	print("GetActiveChatSettings -- after response")
+	return response.settings, response.err
+}
 
 func (m *SqliteManager) OpenDatabase(dataSourceName string) error {
 	if _, err := os.Stat(dataSourceName); err != nil {
@@ -61,6 +173,8 @@ func (m *SqliteManager) OpenDatabase(dataSourceName string) error {
 	} else {
 		m.db = db
 		m.InitializePreparedStatements()
+		m.requestChan = make(chan interface{})
+		go m.run()
 	}
 
 	return err
@@ -265,22 +379,16 @@ func (m *SqliteManager) getChatSettings(chatId *domain.ChatID, row Scannable) (*
 	return settings, nil
 }
 
-func (m *SqliteManager) GetChatSettings(chatId domain.ChatID) (*domain.Settings, error) {
+func (m *SqliteManager) getChatSettingsOuter(chatId domain.ChatID) (*domain.Settings, error) {
 	row := m.getChatSettingsItem.QueryRow(chatId)
-
-	m.dbLock.RLock()
-	defer m.dbLock.RUnlock()
 
 	return m.getChatSettings(&chatId, row)
 }
 
-func (m *SqliteManager) StoreChatSettings(chatId domain.ChatID, settings *domain.Settings) error {
+func (m *SqliteManager) storeChatSettings(chatId domain.ChatID, settings *domain.Settings) error {
 	if chatId == 0 {
 		return nil
 	}
-
-	m.dbLock.Lock()
-	defer m.dbLock.Unlock()
 
 	sessionRunning := settings.SessionRunning
 	if sessionRunning == nil {
@@ -364,18 +472,13 @@ func (m *SqliteManager) StoreChatSettings(chatId domain.ChatID, settings *domain
 	return err
 }
 
-func (m *SqliteManager) DeleteChatSettings(chatId domain.ChatID) error {
-	m.dbLock.Lock()
-	defer m.dbLock.Unlock()
-
+func (m *SqliteManager) deleteChatSettings(chatId domain.ChatID) error {
 	_, err := m.deleteChatSettingsItem.Exec(chatId)
 
 	return err
 }
 
-func (m *SqliteManager) GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *domain.Settings], error) {
-	m.dbLock.RLock()
-
+func (m *SqliteManager) getActiveChatSettings() ([]utils.Pair[domain.ChatID, *domain.Settings], error) {
 	rows, err := m.getActiveChatsSettings.Query()
 	if err != nil {
 		return nil, err
@@ -383,7 +486,6 @@ func (m *SqliteManager) GetActiveChatSettings() ([]utils.Pair[domain.ChatID, *do
 
 	defer func() {
 		err := rows.Close()
-		defer m.dbLock.RUnlock()
 		if err != nil {
 			log.Printf("[GetActiveChatSettings] err at Close(): %v\n", err.Error())
 		}
